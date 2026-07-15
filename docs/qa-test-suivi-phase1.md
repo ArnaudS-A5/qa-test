@@ -23,7 +23,7 @@ ne sont **pas** des tests : ils n'existent pas dans les tableaux et ne sont donc
 | Fixtures HTML (10) sous `src/test/resources/fixtures/` | ✅ Prêt | appear, disappear, rerender, hidden, disabled, overlay, offscreen, slowload, form, nested |
 | Utilitaire `Fixtures.url(...)` (résolution `file://`) | ✅ Prêt | `org.automation.support.Fixtures` |
 | Chrome / Firefox / Maven | ✅ Prêt | Chrome 150, Firefox 152, Maven 3.9.12 |
-| Tests JUnit L1–L6 / T* | ✅ Écrits + exécutés (Chrome) | 25 tests couverts ; Firefox restant |
+| Tests JUnit L1–L6 / T* | ✅ Écrits + exécutés (Chrome **et** Firefox) | 25 tests couverts sur les deux navigateurs |
 
 > ⚠️ Point d'attention environnement : JDK par défaut de `mvn` = Java 25 ; JDK 17 disponible
 > (`ms-17.0.19`). Tous les runs ci-dessous ont été forcés en **Java 17** via `JAVA_HOME`
@@ -33,36 +33,36 @@ ne sont **pas** des tests : ils n'existent pas dans les tableaux et ne sont donc
 
 | # | Mécanisme | Attendu | Statut | Chrome | Firefox | Écart / Note |
 |---|---|---|---|---|---|---|
-| L1 | implicit wait 3s — borne basse (`appear?delay=2800`, findElement brut) | trouvé (< 3 s) | ✅ OK | ✅ trouvé en **2856 ms** | ⬜ non exécuté | Implicit wait natif 3 s opérationnel sur appel Selenium brut. |
-| L2 | implicit wait 3s — borne haute (`appear?delay=3200`, findElement brut) | `NoSuchElement` (> 3 s) | ✅ OK | ✅ `NoSuchElement` en **3056 ms** | ⬜ non exécuté | Borne haute de l'implicit wait respectée. |
-| L3 | profil — borne basse (`appear?delay=T-200`, `WebSync.click`) | succès | ✅ OK | ✅ click en **1826 ms** | ⬜ non exécuté | Passe, mais voir **ÉCART-1** : la valeur du profil n'est pas déterminante (l'attente effective est le défaut Serenity ~5 s, pas `medium`). Le succès tient au fait que la cible (1800 ms) < ~5 s. |
-| L4 | profil — borne haute (`appear?delay=T+200`, `WebSync.click`) | `SyncException [ABSENT]` | ❌ KO | ❌ **aucune exception** (le click réussit) | ⬜ non exécuté | **ÉCART-1** : `-Dqa.sync.timeout.medium=2s` ignoré → attente effective ~5 s > cible 2200 ms → pas de timeout, pas de `SyncException`. Profils `SyncTimeout` non appliqués. |
-| L5 | répéter L3/L4 pour SHORT/MEDIUM/LONG/EXTRA_LONG (dont vraies valeurs MEDIUM) | bornes respectées | ❌ KO (partiel) | LONG borne basse ✅ (click 2576 ms) ; SHORT borne haute ❌ (aucune exception) ; MEDIUM vraies valeurs (14 s) ❌ `ElementShouldBeEnabledException` à **~4 s** | ⬜ non exécuté | **ÉCART-1** : SHORT=1s et MEDIUM=15s non appliqués. L'attente plafonne à ~5 s (défaut Serenity) → SHORT ne timeoute pas (cible 1500 ms), MEDIUM abandonne à ~4 s au lieu d'attendre 14 s. EXTRA_LONG non testé isolément (même moteur). |
-| L6 | polling fin sous WebSync malgré implicit 3s | WebSync tôt (~250ms) vs brut ~3s | ✅ OK | ✅ WebSync **2615 ms** vs brut **2547 ms** (assertion `msWeb ≤ msRaw+500` tenue) | ⬜ non exécuté | Les deux attentes ne s'additionnent pas ; le toggle d'implicit wait fonctionne. Cible à 2500 ms → l'avantage du polling fin n'est pas spectaculaire ici (les deux rendent la main vers ~2,5 s). |
+| L1 | implicit wait 3s — borne basse (`appear?delay=2800`, findElement brut) | trouvé (< 3 s) | ✅ OK | ✅ trouvé en **2856 ms** | ✅ trouvé en **2816 ms** | Implicit wait natif 3 s opérationnel sur appel Selenium brut. |
+| L2 | implicit wait 3s — borne haute (`appear?delay=3200`, findElement brut) | `NoSuchElement` (> 3 s) | ✅ OK | ✅ `NoSuchElement` en **3056 ms** | ✅ `NoSuchElement` en **3020 ms** | Borne haute de l'implicit wait respectée. |
+| L3 | profil — borne basse (`appear?delay=T-200`, `WebSync.click`) | succès | ✅ OK | ✅ click en **1826 ms** | ✅ click en **1884 ms** | Passe, mais voir **ÉCART-1** : la valeur du profil n'est pas déterminante (l'attente effective est le défaut Serenity ~5 s, pas `medium`). Le succès tient au fait que la cible (1800 ms) < ~5 s. |
+| L4 | profil — borne haute (`appear?delay=T+200`, `WebSync.click`) | `SyncException [ABSENT]` | ❌ KO | ❌ **aucune exception** (le click réussit) | ❌ idem (aucune exception) | **ÉCART-1** : `-Dqa.sync.timeout.medium=2s` ignoré → attente effective ~5 s > cible 2200 ms → pas de timeout, pas de `SyncException`. Profils `SyncTimeout` non appliqués. |
+| L5 | répéter L3/L4 pour SHORT/MEDIUM/LONG/EXTRA_LONG (dont vraies valeurs MEDIUM) | bornes respectées | ❌ KO (partiel) | LONG borne basse ✅ (click 2576 ms) ; SHORT borne haute ❌ (aucune exception) ; MEDIUM vraies valeurs (14 s) ❌ `ElementShouldBeEnabledException` à **~4 s** | LONG ✅ (2588 ms) ; SHORT ❌ ; MEDIUM ❌ `ElementShouldBeEnabled` ~5 s | **ÉCART-1** : SHORT=1s et MEDIUM=15s non appliqués. L'attente plafonne à ~5 s (défaut Serenity) → SHORT ne timeoute pas (cible 1500 ms), MEDIUM abandonne à ~4 s au lieu d'attendre 14 s. EXTRA_LONG non testé isolément (même moteur). |
+| L6 | polling fin sous WebSync malgré implicit 3s | WebSync tôt (~250ms) vs brut ~3s | ✅ OK | ✅ WebSync **2615 ms** vs brut **2547 ms** (assertion `msWeb ≤ msRaw+500` tenue) | ✅ WebSync **2578 ms** vs brut **2508 ms** | Les deux attentes ne s'additionnent pas ; le toggle d'implicit wait fonctionne. Cible à 2500 ms → l'avantage du polling fin n'est pas spectaculaire ici (les deux rendent la main vers ~2,5 s). |
 
 ## Tableau de résultats — Comportements précis
 
 | # | Quoi | Attendu | Statut | Chrome | Firefox | Écart / Note |
 |---|---|---|---|---|---|---|
-| T1 | `fluentWait` attend un élément tardif | action réussit | ✅ OK | ✅ click sur cible à 1500 ms | ⬜ non exécuté | Attente d'un élément tardif honorée. |
-| T2 | jamais présent (locator bidon) | `SyncException [ABSENT]` | ❌ KO | ❌ `ElementShouldBeEnabledException` (pas `SyncException`) | ⬜ non exécuté | **ÉCART-2** : sur locator absent, l'exception Serenity brute remonte ; pas de `SyncException [ABSENT]`. Le code `[ABSENT]` n'est pas produit. |
-| T5 | stale/re-render absorbé (`rerender`) | ré-résolution transparente | ✅ OK | ✅ lectures v0→v2 sans `StaleElement` | ⬜ non exécuté | Ré-résolution du `By` transparente, transitoires absorbés. |
-| T6 | `pageLoadTimeout` posé auto (borne, `slowload?ms=8000`) | échec borné ~5 s | ❌ KO | ❌ navigation **8714 ms** (blocage complet), pas de timeout | ⬜ non exécuté | **ÉCART-3** : `-Dqa.sync.pageLoadTimeout=5s` non honoré ; la navigation n'est pas bornée (attend les 8 s complets). |
-| T7 | `HIDDEN` (`hidden`) | `[HIDDEN]` | ✅ OK | ✅ `SyncException [HIDDEN]` | ⬜ non exécuté | Diagnostic actif opérationnel pour HIDDEN. |
-| T8 | `DISABLED` (`disabled`) | `[DISABLED]` | ❌ KO | ❌ `ElementShouldBeEnabledException` (pas `SyncException`) | ⬜ non exécuté | **ÉCART-2** : élément visible mais `disabled` → exception Serenity brute, pas `SyncException [DISABLED]`. |
-| T9 | `INTERCEPTED` (`overlay`) | `[INTERCEPTED]` | ✅ OK | ✅ `SyncException [INTERCEPTED]` | ⬜ non exécuté | Diagnostic actif opérationnel pour INTERCEPTED (hit-test). |
-| T10 | `OUT_OF_BOUNDS` (`offscreen`) | `[OUT_OF_BOUNDS]` | ❌ KO | ❌ **aucune exception** (le click aboutit) | ⬜ non exécuté | **ÉCART-4** : élément à `top:5000px` → Selenium scrolle et clique ; le code `[OUT_OF_BOUNDS]` n'est jamais déclenché. |
-| T11 | `within` container vs child absent (`nested`) | `cause` = bon maillon | ✅ OK | ✅ succès bon container/child | ⬜ non exécuté | Résolution deux-temps `within` fonctionnelle. |
-| T14 | `is*`/`contains*` : absent → `false`, instantané | `false` immédiat (pas de 3 s) | ❌ KO | ❌ `containsText` fuit `NoSuchElement` sur absent | ⬜ non exécuté | **ÉCART-5** : `isVisible/isPresent/isEnabled` OK (false), mais `containsText(By, …)` sur locator absent **lève** `NoSuchElement` au lieu de rendre `false`. Contrat « ne lève jamais » violé pour `containsText`. |
-| T15 | `waitUntil*` positifs/négatifs (`appear`/`disappear`) | attentes honorées | ✅ OK | ✅ `waitUntilVisible` puis `waitUntilNotVisible` honorés | ⬜ non exécuté | Attentes explicites positives et négatives OK. |
-| T16 | `should*` dur (`soft=false`, `form`) | échoue à la 1re | ❌ KO | ❌ `AssertionError` (pas `SyncException` avec code) | ⬜ non exécuté | **ÉCART-6** : `shouldBeVisible` sur absent lève une `AssertionError` Serenity sans code diagnostic `[ABSENT]`/`[HIDDEN]`. L'échec « dur » à la 1re assertion a bien lieu, mais pas sous forme de `SyncException` diagnostiquée. |
-| T17 | `should*` soft (`soft=true`) | agrégé, échec en fin (extension auto) | ✅ OK | ✅ 2 `should*` KO **collectés**, échec agrégé **en fin** | ⬜ non exécuté | Mode soft opérationnel : pas d'arrêt à la 1re, agrégation « 2 assertion(s) souple(s) en échec » via extension auto-détectée (aucune annotation côté test). |
-| T18 | KO → dossier `KO__…/` + 3 fichiers | dossier + ERROR.log + FAIL.log + {step}.html | ✅ OK | ✅ dossier `KO__QATEST__…` + ERROR.log + FAIL.log + `{step}.html` (via `@Steps`) | ⬜ non exécuté | Validé par `RawDomCaptureProducer/Verifier` (site réel, PageObjects `@Step`). **Note** : le producteur phase-1 `ArtefactsProducerTest` appelle `WebSync` **hors `@Step`** → seul `TestFailureManager` s'active (ERROR.log + FAIL.log) mais **pas** de `{step}.html` (dump lié au `stepFailed`, conforme doc). |
-| T19 | dump = DOM réel à l'échec | page source du moment | ✅ OK | ✅ vrai DOM `<html>` de la page à l'échec (pas la vue Prism échappée) | ⬜ non exécuté | Validé via `RawDomCaptureVerifier` (4 tests verts). |
-| T20 | masquage `input[type=password]` (zéro clair, `form`) | `value` blanchie dans le `.html` | ✅ OK | ✅ mot de passe clair **absent** du dump (0 occurrence), `value` blanchie | ⬜ non exécuté | Validé via `RawDomCaptureVerifier` (login `Secret.of("mauvais-mot-de-passe")` → 0 occurrence en clair). |
-| T22 | `type(By, Secret)` (`form`) | saisie OK + masquage | ✅ OK | ✅ `value` DOM = `SuperSecretPassword!` (saisie effective) | ⬜ non exécuté | Saisie via `Secret` fonctionnelle ; masquage à l'échec couvert par T20. |
-| T23 | 3 services actifs par présence du jar | listeners actifs (aucun `@ExtendWith` custom) | ✅ OK | ✅ 3 services actifs sans `@ExtendWith` custom | ⬜ non exécuté | `TestFailureManager` (dossiers/logs) + `RawDomCaptureListener` (dump DOM au `stepFailed`) + `SoftAssertionExtension` (agrégation T17) confirmés par simple présence du jar. |
-| T24 | précédence `-D` > `serenity.conf` | `-D` gagne | ✅ OK | ✅ `environment` résolu = `override-D` (conf = `qatest`) | ⬜ non exécuté | Précédence `-D` > `serenity.conf` confirmée. |
+| T1 | `fluentWait` attend un élément tardif | action réussit | ✅ OK | ✅ click sur cible à 1500 ms | ✅ idem | Attente d'un élément tardif honorée. |
+| T2 | jamais présent (locator bidon) | `SyncException [ABSENT]` | ❌ KO | ❌ `ElementShouldBeEnabledException` (pas `SyncException`) | ❌ idem (`ElementShouldBeEnabledException`) | **ÉCART-2** : sur locator absent, l'exception Serenity brute remonte ; pas de `SyncException [ABSENT]`. Le code `[ABSENT]` n'est pas produit. |
+| T5 | stale/re-render absorbé (`rerender`) | ré-résolution transparente | ✅ OK | ✅ lectures v0→v2 sans `StaleElement` | ✅ idem (v0→v2) | Ré-résolution du `By` transparente, transitoires absorbés. |
+| T6 | `pageLoadTimeout` posé auto (borne, `slowload?ms=8000`) | échec borné ~5 s | ❌ KO | ❌ navigation **8714 ms** (blocage complet), pas de timeout | ❌ nav **9341 ms**, pas de timeout | **ÉCART-3** : `-Dqa.sync.pageLoadTimeout=5s` non honoré ; la navigation n'est pas bornée (attend les 8 s complets). |
+| T7 | `HIDDEN` (`hidden`) | `[HIDDEN]` | ✅ OK | ✅ `SyncException [HIDDEN]` | ✅ `[HIDDEN]` (message multi-codes `[HIDDEN] [OUT_OF_BOUNDS]`) | Diagnostic actif opérationnel pour HIDDEN. |
+| T8 | `DISABLED` (`disabled`) | `[DISABLED]` | ❌ KO | ❌ `ElementShouldBeEnabledException` (pas `SyncException`) | ❌ idem (`ElementShouldBeEnabledException`) | **ÉCART-2** : élément visible mais `disabled` → exception Serenity brute, pas `SyncException [DISABLED]`. |
+| T9 | `INTERCEPTED` (`overlay`) | `[INTERCEPTED]` | ✅ OK | ✅ `SyncException [INTERCEPTED]` | ✅ `[INTERCEPTED]` | Diagnostic actif opérationnel pour INTERCEPTED (hit-test). |
+| T10 | `OUT_OF_BOUNDS` (`offscreen`) | `[OUT_OF_BOUNDS]` | ❌ KO | ❌ **aucune exception** (le click aboutit) | ❌ idem (aucune exception) | **ÉCART-4** : élément à `top:5000px` → Selenium scrolle et clique ; le code `[OUT_OF_BOUNDS]` n'est jamais déclenché. |
+| T11 | `within` container vs child absent (`nested`) | `cause` = bon maillon | ✅ OK | ✅ succès bon container/child | ✅ idem (`cause [ABSENT]` = bon maillon) | Résolution deux-temps `within` fonctionnelle. |
+| T14 | `is*`/`contains*` : absent → `false`, instantané | `false` immédiat (pas de 3 s) | ❌ KO | ❌ `containsText` fuit `NoSuchElement` sur absent | ❌ idem (`containsText` fuit `NoSuchElement`) | **ÉCART-5** : `isVisible/isPresent/isEnabled` OK (false), mais `containsText(By, …)` sur locator absent **lève** `NoSuchElement` au lieu de rendre `false`. Contrat « ne lève jamais » violé pour `containsText`. |
+| T15 | `waitUntil*` positifs/négatifs (`appear`/`disappear`) | attentes honorées | ✅ OK | ✅ `waitUntilVisible` puis `waitUntilNotVisible` honorés | ✅ idem | Attentes explicites positives et négatives OK. |
+| T16 | `should*` dur (`soft=false`, `form`) | échoue à la 1re | ❌ KO | ❌ `AssertionError` (pas `SyncException` avec code) | ❌ idem (`AssertionError`) | **ÉCART-6** : `shouldBeVisible` sur absent lève une `AssertionError` Serenity sans code diagnostic `[ABSENT]`/`[HIDDEN]`. L'échec « dur » à la 1re assertion a bien lieu, mais pas sous forme de `SyncException` diagnostiquée. |
+| T17 | `should*` soft (`soft=true`) | agrégé, échec en fin (extension auto) | ✅ OK | ✅ 2 `should*` KO **collectés**, échec agrégé **en fin** | ✅ idem (« 2 assertion(s) souple(s) en échec ») | Mode soft opérationnel : pas d'arrêt à la 1re, agrégation « 2 assertion(s) souple(s) en échec » via extension auto-détectée (aucune annotation côté test). |
+| T18 | KO → dossier `KO__…/` + 3 fichiers | dossier + ERROR.log + FAIL.log + {step}.html | ✅ OK | ✅ dossier `KO__QATEST__…` + ERROR.log + FAIL.log + `{step}.html` (via `@Steps`) | ✅ dossier + 3 fichiers (run propre) | Validé par `RawDomCaptureProducer/Verifier` (site réel, PageObjects `@Step`). **Note** : le producteur phase-1 `ArtefactsProducerTest` appelle `WebSync` **hors `@Step`** → seul `TestFailureManager` s'active (ERROR.log + FAIL.log) mais **pas** de `{step}.html` (dump lié au `stepFailed`, conforme doc). |
+| T19 | dump = DOM réel à l'échec | page source du moment | ✅ OK | ✅ vrai DOM `<html>` de la page à l'échec (pas la vue Prism échappée) | ✅ vrai DOM `<html>` | Validé via `RawDomCaptureVerifier` (4 tests verts en Chrome ET Firefox). |
+| T20 | masquage `input[type=password]` (zéro clair, `form`) | `value` blanchie dans le `.html` | ✅ OK | ✅ mot de passe clair **absent** du dump (0 occurrence), `value` blanchie | ✅ mot de passe clair **absent** (0 occurrence) | Validé via `RawDomCaptureVerifier` (login `Secret.of("mauvais-mot-de-passe")` → 0 occurrence en clair). |
+| T22 | `type(By, Secret)` (`form`) | saisie OK + masquage | ✅ OK | ✅ `value` DOM = `SuperSecretPassword!` (saisie effective) | ✅ `value` = `SuperSecretPassword!` | Saisie via `Secret` fonctionnelle ; masquage à l'échec couvert par T20. |
+| T23 | 3 services actifs par présence du jar | listeners actifs (aucun `@ExtendWith` custom) | ✅ OK | ✅ 3 services actifs sans `@ExtendWith` custom | ✅ 3 services actifs | `TestFailureManager` (dossiers/logs) + `RawDomCaptureListener` (dump DOM au `stepFailed`) + `SoftAssertionExtension` (agrégation T17) confirmés par simple présence du jar. |
+| T24 | précédence `-D` > `serenity.conf` | `-D` gagne | ✅ OK | ✅ `environment` résolu = `override-D` (conf = `qatest`) | ✅ `environment` = `override-D` | Précédence `-D` > `serenity.conf` confirmée. |
 
 ## Légende statut
 
@@ -71,13 +71,16 @@ ne sont **pas** des tests : ils n'existent pas dans les tableaux et ne sont donc
 - ❌ KO (attendu non observé — à notifier + écart)
 - ⚠️ partiel / à confirmer
 
-## Synthèse Chrome (2026-07-15)
+## Synthèse Chrome + Firefox (2026-07-15)
 
-- **25 tests couverts. Chrome : 17 ✅ / 8 ❌.** Firefox : ⬜ non encore exécuté (les 8 écarts sont
-  de niveau **socle**, donc attendus identiques en Firefox ; à confirmer par un run).
+- **25 tests couverts. Chrome : 17 ✅ / 8 ❌. Firefox : 17 ✅ / 8 ❌ — résultats identiques.**
+  Les 8 écarts sont de niveau **socle** (indépendants du navigateur), ce que la passe Firefox confirme.
 - ✅ (17) : L1, L2, L3, L5(LONG), L6, T1, T5, T7, T9, T11, T15, T17, T18, T19, T20, T22, T23, T24.
   *(L3 et L5-LONG passent, mais sans valider réellement la borne du profil — cf. ÉCART-1.)*
 - ❌ (8) : **L4, L5(SHORT+MEDIUM), T2, T6, T8, T10, T14, T16**.
+- Écarts de timing entre navigateurs négligeables (L1 2856/2816 ms, L2 3056/3020 ms, L6 ~2,6/2,5 s).
+  Seule nuance Firefox : le diagnostic HIDDEN remonte un message **multi-codes** `[HIDDEN] [OUT_OF_BOUNDS]`
+  (contient bien `[HIDDEN]` → T7 ✅).
 
 > Les parties **réellement implémentées** du socle (capture d'artefacts `KO__`, dump DOM au `stepFailed`,
 > masquage `password`, soft-assert, activation par ServiceLoader, diagnostic HIDDEN/INTERCEPTED, `within`,
@@ -142,6 +145,20 @@ L4 exige `medium=2s`, L5-MEDIUM exige `medium=15s` réel → runs séparés) :
   `<html>` (T19), mot de passe clair `mauvais-mot-de-passe` **absent** du dump = masquage (T20), 3 services
   actifs (T23). ⇒ **T18/T19/T20/T23 validés**.
 
-**Reste à faire.** Passe **Firefox** (`-Dwebdriver.driver=firefox`) sur l'ensemble (mêmes groupes/`-D`) pour
-remplir la colonne Firefox ; puis PHASE 2 (sites réels) et PHASE 3 (parallélisme) selon le prompt.
+**Runs Firefox (2026-07-15, ~12:06–12:17).** Mêmes groupes A–E, H et RawDomCapture, avec
+`-Dwebdriver.driver=firefox` (geckodriver via Selenium Manager). Résultats **identiques à Chrome** test par
+test (8 KO aux mêmes endroits, mêmes causes). Timings : L1=2816, L2=3020, L3=1884, L5-LONG=2588,
+L6=2578/2508 ms, T6 nav=9341 ms. Sur un **run propre** (après nettoyage de `target/qa-results`), le
+producteur `RawDomCapture` génère bien les dumps `{step}.html` (LOGIN + CHECKBOXES) et le vérificateur
+passe **4/4** (DOM `<html>` réel, mot de passe clair **absent** → masquage OK) — comme Chrome.
+
+> ⚠️ Piège rencontré : un premier lancement Firefox a échoué au **paramétrage du driver** (bug de quoting
+> zsh : `-Dwebdriver.driver` avait avalé toute la ligne). Ces échecs « avant navigateur » ont tout de même
+> fait créer des dossiers `KO__` **sans dump** ; le vérificateur, tombant sur ces dossiers périmés, a
+> d'abord signalé à tort « dump `.html` manquant ». Après nettoyage de `target/qa-results` et relance
+> propre, T18/T19/T20/T23 sont **verts** en Firefox. Enseignement : **nettoyer `target/qa-results` avant
+> une campagne producteur/vérificateur**, sinon les artefacts d'un run antérieur faussent la vérification.
+
+**Reste à faire.** PHASE 2 (sites réels — surface d'interaction sur widgets, S1–S5) et PHASE 3
+(parallélisme — un DOM par test KO, pas de fuite `ThreadLocal`) selon le prompt.
 
