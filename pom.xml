@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      ============================================================================
+      qa-test — Projet de tests automatisés (consommateur du socle QA)
+      ============================================================================
+      Stack : Selenium Java / Serenity BDD (sans Cucumber) / JUnit 5 / Maven,
+      en Page Object Model (PageObjects + Steps).
+
+      Principe (cf. qa-template / décision D6-bis) :
+        - On HÉRITE de `qa-parent` : il pilote TOUTES les versions (dépendances ET
+          plugins). Ce projet ne fixe AUCUNE version lui-même.
+        - On ajoute UNE SEULE dépendance : `qa-socle`. Elle réexporte (scope compile)
+          Selenium, Serenity, JUnit 5, Apache POI et le log (SLF4J + Logback). On ne
+          redéclare donc jamais Selenium ni Serenity ici : ce sont des dépendances
+          TRANSITIVES fournies par le socle.
+        - Monter de version le socle = bumper la version du <parent> ci-dessous
+          (une seule ligne) ; la version de qa-socle suit via ${project.parent.version}.
+      ============================================================================
+    -->
+
+    <parent>
+        <groupId>com.example.qa</groupId>
+        <artifactId>qa-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <!-- Résolution depuis le dépôt (Artifactory en CI ; ~/.m2 en local),
+             pas depuis le système de fichiers. -->
+        <relativePath/>
+    </parent>
+
+    <groupId>org.automation</groupId>
+    <artifactId>qa-test</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <dependencies>
+        <!--
+          Unique dépendance du projet : le socle QA. Sa version suit celle du parent.
+          Elle apporte transitivement (scope compile, réexporté par le socle) :
+            - org.seleniumhq.selenium:selenium-java   (Selenium)
+            - net.serenity-bdd:serenity-core          (Serenity BDD)
+            - net.serenity-bdd:serenity-junit5        (intégration JUnit 5)
+            - org.apache.poi:poi / poi-ooxml          (données Excel/CSV)
+            - org.slf4j:slf4j-api + ch.qos.logback    (journalisation)
+            - org.junit.jupiter:junit-jupiter         (JUnit 5)
+          -> aucune de ces dépendances n'est redéclarée ici.
+        -->
+        <dependency>
+            <groupId>com.example.qa</groupId>
+            <artifactId>qa-socle</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Exécution des tests (versions/config héritées de qa-parent). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <!-- Agrégation du rapport Serenity : `mvn serenity:aggregate`
+                 (HTML sous target/site/serenity/). Version pilotée par qa-parent. -->
+            <plugin>
+                <groupId>net.serenity-bdd.maven.plugins</groupId>
+                <artifactId>serenity-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>serenity-reports</id>
+                        <phase>post-integration-test</phase>
+                        <goals><goal>aggregate</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
