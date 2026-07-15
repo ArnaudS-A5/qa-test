@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>overlay</title>
+  <style>
+    #overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+    #target {
+      position: absolute;
+      top: 100px; left: 100px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture diagnostic [INTERCEPTED] (T9).
+    #target est visible et enabled, mais un overlay position:fixed le recouvre
+    entièrement → tout clic est intercepté (hit-test JS du socle).
+  -->
+  <h1>overlay</h1>
+  <button id="target" type="button">target</button>
+  <div id="overlay"></div>
+</body>
+</html>
+

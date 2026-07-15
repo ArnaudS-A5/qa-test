@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>disabled</title>
+</head>
+<body>
+  <!--
+    Fixture diagnostic [DISABLED] (T8).
+    #target est présent, visible, mais disabled.
+    Option : ?enableAfter=N (ms) le réactive après N ms (waitUntilEnabled).
+  -->
+  <h1>disabled</h1>
+  <button id="target" type="button" disabled>target</button>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var enableAfter = params.get('enableAfter');
+      if (enableAfter !== null) {
+        window.setTimeout(function () {
+          var el = document.getElementById('target');
+          if (el) { el.removeAttribute('disabled'); }
+        }, parseInt(enableAfter, 10));
+      }
+    })();
+  </script>
+</body>
+</html>
+

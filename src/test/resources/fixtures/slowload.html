@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>slowload</title>
+  <!--
+    Fixture pageLoadTimeout (T6).
+    Un <script> synchrone en tête bloque le fil principal pendant ?ms=N (ms) :
+    document.get(...) ne rend la main qu'après ce blocage → dépasse un
+    pageLoadTimeout abaissé (-Dqa.sync.pageLoadTimeout=5s) et borne l'échec.
+  -->
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var ms = parseInt(params.get('ms') || '0', 10);
+      var end = Date.now() + ms;
+      // Boucle occupée (busy-wait) : bloque le parsing/chargement de la page.
+      while (Date.now() < end) { /* spin */ }
+    })();
+  </script>
+</head>
+<body>
+  <h1>slowload</h1>
+  <div id="target">loaded</div>
+</body>
+</html>
+

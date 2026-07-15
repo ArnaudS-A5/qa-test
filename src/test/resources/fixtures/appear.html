@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>appear</title>
+</head>
+<body>
+  <!--
+    Fixture pivot des bornes (L1..L6, T1).
+    Lit ?delay=N (ms) et insère #target après setTimeout(N).
+    #target est un bouton cliquable, pour exercer WebSync.click.
+  -->
+  <h1>appear</h1>
+  <div id="status">waiting</div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var delay = parseInt(params.get('delay') || '0', 10);
+      window.setTimeout(function () {
+        var btn = document.createElement('button');
+        btn.id = 'target';
+        btn.type = 'button';
+        btn.textContent = 'target';
+        btn.addEventListener('click', function () {
+          document.getElementById('status').textContent = 'clicked';
+        });
+        document.body.appendChild(btn);
+        document.getElementById('status').textContent = 'appeared';
+      }, delay);
+    })();
+  </script>
+</body>
+</html>
+

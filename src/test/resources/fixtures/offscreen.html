@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>offscreen</title>
+  <style>
+    #target {
+      position: absolute;
+      top: 5000px;
+      left: 0;
+    }
+    body { height: 6000px; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture diagnostic [OUT_OF_BOUNDS] (T10).
+    #target est présent et visible mais positionné hors viewport (top:5000px).
+  -->
+  <h1>offscreen</h1>
+  <button id="target" type="button">target</button>
+</body>
+</html>
+

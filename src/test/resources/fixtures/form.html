@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>form</title>
+</head>
+<body>
+  <!--
+    Fixture formulaire (T16, T20, T22 + surface d'interaction).
+    Contient : input texte, input password, <select>, checkbox, bouton submit.
+    Le password sert au masquage (input[type=password].value blanchie dans le dump)
+    et à type(By, Secret).
+  -->
+  <h1>form</h1>
+  <form id="form" onsubmit="document.getElementById('submitted').textContent='submitted'; return false;">
+    <label>Texte :
+      <input id="text" type="text" name="text">
+    </label>
+    <br>
+    <label>Mot de passe :
+      <input id="password" type="password" name="password">
+    </label>
+    <br>
+    <label>Choix :
+      <select id="select" name="select">
+        <option value="a">Option A</option>
+        <option value="b">Option B</option>
+        <option value="c">Option C</option>
+      </select>
+    </label>
+    <br>
+    <label>
+      <input id="checkbox" type="checkbox" name="checkbox"> J'accepte
+    </label>
+    <br>
+    <button id="submit" type="submit">Envoyer</button>
+  </form>
+  <div id="submitted"></div>
+  <!-- #missing : locator volontairement inexistant, pour un should* KO (T16). -->
+</body>
+</html>
+

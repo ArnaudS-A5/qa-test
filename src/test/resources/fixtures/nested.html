@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>nested</title>
+</head>
+<body>
+  <!--
+    Fixture within (T11) : résolution deux-temps container -> child.
+    #box (container) contient #child. Permet de tester :
+      - within(#box).click(#child)         → succès
+      - within(#boxBidon).click(#child)    → cause = container (maillon fautif)
+      - within(#box).click(#childBidon)    → cause = child (maillon fautif)
+  -->
+  <h1>nested</h1>
+  <div id="box">
+    <button id="child" type="button">child</button>
+  </div>
+</body>
+</html>
+

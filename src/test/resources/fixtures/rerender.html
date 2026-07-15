@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>rerender</title>
+</head>
+<body>
+  <!--
+    Fixture stale / re-render (T5).
+    Remplace le nœud #target par un nouveau nœud toutes les ?interval=N (ms).
+    Chaque remplacement rend obsolète (stale) toute référence précédente au nœud.
+  -->
+  <h1>rerender</h1>
+  <div id="container">
+    <div id="target">v0</div>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var interval = parseInt(params.get('interval') || '300', 10);
+      var n = 0;
+      window.setInterval(function () {
+        var container = document.getElementById('container');
+        var old = document.getElementById('target');
+        if (old) { container.removeChild(old); }
+        n += 1;
+        var fresh = document.createElement('div');
+        fresh.id = 'target';
+        fresh.textContent = 'v' + n;
+        container.appendChild(fresh);
+      }, interval);
+    })();
+  </script>
+</body>
+</html>
+

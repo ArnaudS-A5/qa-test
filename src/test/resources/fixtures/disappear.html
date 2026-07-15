@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>disappear</title>
+</head>
+<body>
+  <!--
+    Fixture des waits négatifs (T15, waitUntilNotVisible / waitForElementToDisappear).
+    #target présent au chargement, retiré du DOM après ?delay=N (ms).
+  -->
+  <h1>disappear</h1>
+  <div id="target">target</div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var delay = parseInt(params.get('delay') || '0', 10);
+      window.setTimeout(function () {
+        var el = document.getElementById('target');
+        if (el) { el.parentNode.removeChild(el); }
+      }, delay);
+    })();
+  </script>
+</body>
+</html>
+
