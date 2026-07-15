@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Configuration de log des tests qa-test.
+
+  POURQUOI ce fichier : qa-socle fournit logback-classic mais n'embarque (pas encore)
+  de config par défaut (LogbackConfigurator est une coquille, D16-bis). Sans ce fichier,
+  logback-classic tombe donc sur sa config INTÉGRÉE par défaut : root=DEBUG, avec un
+  motif incluant le nom de logger complet (chemin de package) et sans couleur, d'où le
+  flot de DEBUG internes (StepInterceptor, etc., qui impriment au passage le gabarit
+  brut `{0}`/`{1}` des @Step).
+
+  Ce fichier reprend la main : console propre + colorée, niveaux relevés, le détail
+  des steps (avec valeurs substituées et masquage Secret) étant rendu par la sortie
+  console native de Serenity (cf. serenity.logging = VERBOSE dans serenity.conf).
+-->
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- Pas de %logger : on n'affiche plus le chemin de package. Niveau colorisé. -->
+            <pattern>%highlight(%-5level) %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Bruit interne Serenity (ancien namespace) : coupe StepInterceptor/StepEventBus DEBUG. -->
+    <logger name="net.thucydides" level="WARN"/>
+    <!-- Serenity (namespace actuel) gardé à INFO pour la sortie console des steps. -->
+    <logger name="net.serenitybdd" level="INFO"/>
+    <!-- Selenium / clients HTTP / Netty : pas de DEBUG. -->
+    <logger name="org.openqa.selenium" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+    <logger name="org.apache" level="WARN"/>
+
+    <!-- Namespace du socle (log d'action « qa ») : discret par défaut. -->
+    <logger name="qa" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
