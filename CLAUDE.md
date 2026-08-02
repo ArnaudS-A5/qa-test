@@ -118,13 +118,21 @@ français, types `feat|fix|test|refactor|chore|docs|ci`. Scopes usuels ici : `bu
 
 ## Statut du projet
 
-- **PHASE 1 exécutée en Chrome** (voir `docs/qa-test-suivi-phase1.md`) : 25 tests couverts, **17 ✅ / 8 ❌**.
-  Les 8 KO sont des **écarts de niveau socle** (moteur SYNC partiellement squelette) : profils `SyncTimeout`
-  / overrides `-D` non appliqués (L3-L5), diagnostic `[ABSENT]`/`[DISABLED]`/`[OUT_OF_BOUNDS]` non produit
-  (T2/T8/T10), `pageLoadTimeout` non borné (T6), `containsText` qui lève sur absent (T14), `should*` sans
-  code diagnostic (T16). Les parties réellement implémentées passent (capture KO, dump DOM au `stepFailed`,
-  masquage password, soft-assert, activation ServiceLoader, diagnostic HIDDEN/INTERCEPTED, `within`).
-- **Reste à faire** : passe Firefox de la PHASE 1, puis PHASE 2 (sites réels) et PHASE 3 (parallélisme).
+- **Socle corrigé → PHASE 1 tout-vert (Chrome, 2026-08-02).** Le moteur SYNC a été implémenté côté socle
+  (`develop`) : les profils `SyncTimeout` / overrides `-Dqa.sync.timeout.*` sont désormais appliqués, et le
+  diagnostic `[ABSENT]/[DISABLED]/[OUT_OF_BOUNDS]` produit. Avec les **bons `-D` par test** (cf. README
+  « Lancer une campagne complète »), les anciens 8 KO passent (L4, L5-SHORT, T2, T8, T14 par le correctif
+  socle ; **T6, T10, T16 par correctif côté test**). `docs/qa-test-suivi-phase1.md` détaille l'historique
+  (campagne pré-correctif du 2026-07-15) et la mise à jour du 2026-08-02.
+- **Corrections côté test appliquées** (cf. `docs/qa-test-briefing-erreurs-phase1.md`) : T6 (contact
+  `WebSync` avant navigation → `pageLoadTimeout` armé), T10 **reclassé** (scroll-into-view ; ajout de
+  **T10bis**, preuve d'équivalence `WebSync.click` ≡ `Actions`), T16 (attend `AssertionError`), et **A9**
+  (secret : plus aucune sortie du clair). Démo `RobotMouseDemoTest` (OS-level, commentée, hors socle).
+- **PHASE 2 migrée vers `WebSync`.** `LoginPage`/`CheckboxesPage` n'utilisent plus l'API Serenity native
+  (`WebElementFacade`) : interactions par `By` via `WebSync` (le principe « chaque PageObject détient un
+  `WebSync` » est désormais respecté). Le mot de passe transite en `Secret` jusqu'à `WebSync.type(By, Secret)`.
+- **Reste à faire** : re-passe **Firefox** de la PHASE 1 avec le socle corrigé (rafraîchir les timings du
+  suivi), puis **PHASE 3** (parallélisme — un DOM par test KO, pas de fuite `ThreadLocal`).
 
 ## Documentation de référence
 

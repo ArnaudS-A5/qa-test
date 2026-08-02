@@ -4,6 +4,36 @@
 > Source : `docs/qa-test-prompt.md`, chapitre 3 (PHASE 1). Objectif : **aucun trou dans la raquette** —
 > chaque test du document figure ici avec son statut. Un test non exécuté ou en échec est **notifié**.
 
+## ⏱️ Mise à jour 2026-08-02 — socle corrigé, tests migrés, campagne tout-vert
+
+> Cette section **prime** sur les tableaux plus bas, qui documentent la campagne **historique du
+> 2026-07-15** (socle pré-correctif, 8 KO). Ils sont conservés comme trace, **non réécrits** (pas
+> d'invention de timings ni de passe Firefox non rejouée).
+
+**Ce qui a changé depuis le 2026-07-15 :**
+- **Socle corrigé** (`develop`) : moteur SYNC implémenté — profils `SyncTimeout` et overrides
+  `-Dqa.sync.timeout.*` **appliqués**, diagnostic `[ABSENT]/[DISABLED]/[OUT_OF_BOUNDS]` **produit**,
+  `pageLoadTimeout` **borné**. Les ÉCART-1 à 5 (côté socle) sont **levés**.
+- **Corrections côté test** (cf. `qa-test-briefing-erreurs-phase1.md`) : **T6** (contact `WebSync` avant
+  navigation), **T10** reclassé (scroll-into-view + **T10bis**, preuve d'équivalence pointeur), **T16**
+  (attend `AssertionError`), **A9** (secret : zéro sortie du clair).
+- **PHASE 2 migrée vers `WebSync`** (`LoginPage`/`CheckboxesPage`), relancée verte.
+
+**Résultat campagne 2026-08-02 (Chrome, Java 17) — 24 tests PHASE 1 exécutables : tous ✅.** Commandes
+exactes : README, section « Lancer une campagne complète ». Les 8 anciens KO passent désormais :
+
+| Ancien KO | Cause d'origine | Statut 2026-08-02 |
+|---|---|---|
+| L4, L5-SHORT | profils `SyncTimeout` non appliqués (ÉCART-1) | ✅ socle corrigé |
+| T2, T8 | diagnostic `[ABSENT]/[DISABLED]` non produit (ÉCART-2) | ✅ socle corrigé |
+| T14 | `containsText` fuyait `NoSuchElement` (ÉCART-5) | ✅ socle corrigé |
+| T6 | `pageLoadTimeout` non armé | ✅ correctif test (contact `WebSync` avant nav) |
+| T10 | `OUT_OF_BOUNDS` inatteignable | ✅ reclassé (scroll-into-view) + T10bis |
+| T16 | `should*` attendait `SyncException` | ✅ correctif test (attend `AssertionError`) |
+
+**Reste à rafraîchir** : re-passe **Firefox** avec le socle corrigé pour actualiser les timings des
+tableaux ci-dessous, puis **PHASE 3** (parallélisme).
+
 ## Périmètre exact des tests de la PHASE 1
 
 Le chapitre 3 comporte **deux tableaux**. Les identifiants absents du document (T3, T4, T12, T13, T21)
@@ -71,7 +101,7 @@ ne sont **pas** des tests : ils n'existent pas dans les tableaux et ne sont donc
 - ❌ KO (attendu non observé — à notifier + écart)
 - ⚠️ partiel / à confirmer
 
-## Synthèse Chrome + Firefox (2026-07-15)
+## Synthèse Chrome + Firefox (2026-07-15) — *historique (socle pré-correctif)*
 
 - **25 tests couverts. Chrome : 17 ✅ / 8 ❌. Firefox : 17 ✅ / 8 ❌ — résultats identiques.**
   Les 8 écarts sont de niveau **socle** (indépendants du navigateur), ce que la passe Firefox confirme.
@@ -159,6 +189,8 @@ passe **4/4** (DOM `<html>` réel, mot de passe clair **absent** → masquage OK
 > propre, T18/T19/T20/T23 sont **verts** en Firefox. Enseignement : **nettoyer `target/qa-results` avant
 > une campagne producteur/vérificateur**, sinon les artefacts d'un run antérieur faussent la vérification.
 
-**Reste à faire.** PHASE 2 (sites réels — surface d'interaction sur widgets, S1–S5) et PHASE 3
-(parallélisme — un DOM par test KO, pas de fuite `ThreadLocal`) selon le prompt.
+**Reste à faire.** ~~PHASE 2 (sites réels)~~ **faite** (PageObjects migrés vers `WebSync`,
+`AuthenticationTest` vert) ; **PHASE 3** (parallélisme — un DOM par test KO, pas de fuite `ThreadLocal`)
+selon le prompt. Rafraîchir aussi les timings ci-dessus par une re-passe Chrome+Firefox sur socle corrigé
+(cf. « Mise à jour 2026-08-02 » en tête).
 

@@ -54,6 +54,66 @@ mvn verify
 > qui échouent à dessein (démo capture KO, spike DOM brut) sont `@Disabled`. On les réactive à la
 > demande avec `-Djunit.jupiter.conditions.deactivate='*DisabledCondition'`.
 
+## Lancer une campagne complète (PHASE 1 + PHASE 2)
+
+Certains tests exigent des valeurs de configuration **contradictoires** (ex. le profil `MEDIUM` :
+`2s` pour L3/L4, mais `15s` réel pour `L5_medium_vraies_valeurs`). Ils **ne peuvent pas** tourner
+sous un même jeu de `-D` → la campagne se fait en **4 invocations**.
+`-Dmaven.test.failure.ignore=true` empêche l'arrêt au 1ᵉʳ échec : on **collecte tous** les résultats
+malgré d'éventuels cas non passants.
+
+```bash
+export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+
+# Run 1 — PHASE 1 (fixtures locales) : profils du socle abaissés pour rester rapide.
+#   short=1s (L5-SHORT, T2, T11, T16, DiagnosticTest) · medium=2s (L3, L4)
+#   long=3s (L5-LONG, L6, T1, T5, T15) · pageLoadTimeout=5s (T6)
+#   L1/L2 s'appuient sur l'implicit wait natif (3s, serenity.conf) — volontairement non surchargé.
+#   On EXCLUT L5_medium_vraies_valeurs (elle veut medium=15s, cf. Run 2) via le "!".
+mvn clean test \
+  -Dqa.sync.timeout.short=1s -Dqa.sync.timeout.medium=2s -Dqa.sync.timeout.long=3s \
+  -Dqa.sync.pageLoadTimeout=5s \
+  -Dtest='BornesLimitesTest,DiagnosticTest,FormEtSecretTest,PageLoadEtConfigTest#T6_page_load_timeout,!BornesLimitesTest#L5_medium_vraies_valeurs' \
+  -Dmaven.test.failure.ignore=true
+
+# Run 2 — L5 MEDIUM aux VRAIES valeurs : medium=15s (défaut, aucun -D de timeout). L'élément
+#   apparaît à 14s → le socle doit attendre ~14s puis réussir. (Pas de 'clean' : on accumule.)
+mvn test -Dtest='BornesLimitesTest#L5_medium_vraies_valeurs' \
+  -Dmaven.test.failure.ignore=true
+
+# Run 3 — T24 : précédence -D > serenity.conf. On passe -Denvironment=override-D et le test
+#   vérifie que la valeur résolue est bien 'override-D' (et non 'qatest' du serenity.conf).
+#   Isolé pour que le reste de la campagne garde {ENV}=qatest dans le nommage des artefacts KO__.
+mvn test -Dtest='PageLoadEtConfigTest#T24_precedence_D' -Denvironment=override-D \
+  -Dmaven.test.failure.ignore=true
+
+# Run 4 — PHASE 2 (site réel) : profils PAR DÉFAUT. NE PAS abaisser les timeouts ici
+#   (cf. note ci-dessous : sans effet sur ce test, et risque de flakiness réseau).
+mvn test -Dtest='AuthenticationTest' \
+  -Dmaven.test.failure.ignore=true
+```
+
+Pour **Firefox** : ajouter `-Dwebdriver.driver=firefox` à **chacune** des 4 commandes.
+
+### La clé `environment` (ce que teste T24)
+
+`environment` est une propriété Serenity (valeur `qatest` dans `serenity.conf`). Elle sert de token
+`{ENV}` dans le nommage des artefacts d'échec : `target/qa-results/KO__{ENV}__{Test}__{timestamp}/`.
+T24 la surcharge en ligne de commande (`-Denvironment=override-D`) et **vérifie que le `-D` l'emporte
+sur `serenity.conf`** — c'est un test de **précédence de configuration**, rien de plus. Concrètement,
+ça ne « remplace » qu'une **valeur** : les dossiers `KO__` seraient préfixés `override-D` au lieu de
+`qatest`. L'URL de base n'est pas affectée (héritée du bloc `environments.default`).
+
+### Pourquoi PHASE 2 n'a pas de `-D` de timeout
+
+Depuis la migration des PageObjects vers `WebSync` (cf. « Architecture »), la PHASE 2 **passe par le
+moteur de synchro du socle** : `qa.sync.*` la gouverne bien. Mais **abaisser ces clés ne suffit pas à
+provoquer une erreur** sur ce site : mesuré, même `qa.sync.*=1ms` laisse `AuthenticationTest` **vert**,
+car chaque interaction trouve sa cible **déjà présente** (la page est chargée avant que `WebSync` ne
+sonde) → le budget de timeout n'est jamais consommé. Forcer un timeout contre un site **très haute
+disponibilité** reste illusoire ; c'est précisément le rôle de la **PHASE 1** (fixtures à délais
+contrôlés) de valider les bornes du socle. On garde donc la PHASE 2 en profils **par défaut**.
+
 ## Ce que démontre la suite
 
 | Test | Rôle |
@@ -101,15 +161,17 @@ mvn test -Dtest='AuthenticationTest#invalid_login_is_captured_by_qa_socle' \
 
 ```
 src/test/java/org/automation/
-├── pages/LoginPage.java     # Page Object (interactions Serenity natives)
+├── pages/LoginPage.java     # Page Object (interactions via WebSync du socle, locators By)
 ├── steps/LoginSteps.java    # Steps @Step (orchestration ; le secret transite en Secret du socle)
 └── AuthenticationTest.java  # Tests JUnit 5 + SerenityJUnit5Extension
 ```
 
-> Limite actuelle : `WebSync`/`MobileSync`, `DataFileManager`, `SecretManager`, `ReportingManager`
-> du socle restent des squelettes (no-op, « corps réels = étape 8 »). Dès leur implémentation, les
-> interactions de `LoginPage` pourront passer par `WebSync` (locators `By`, synchro maison) plutôt
-> que par l'API Serenity native.
+> **Migration effectuée** : `WebSync` étant désormais implémenté côté socle, les PageObjects
+> (`LoginPage`, `CheckboxesPage`) ont été **migrés de l'API Serenity native (`WebElementFacade`) vers
+> `WebSync`** (locators `By`, synchro maison, diagnostic, contrat no-leak). Leurs interactions sont donc
+> gouvernées par `qa.sync.*`. La navigation (`open()`) reste fournie par le `PageObject` Serenity
+> (`@DefaultUrl` + `webdriver.base.url`). Le mot de passe transite en `Secret` **jusqu'à**
+> `WebSync.type(By, Secret)` : plus aucune déballe du clair dans ce projet.
 
 ## Spike — validation de la capture DOM brut (option A du socle)
 
