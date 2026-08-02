@@ -65,7 +65,7 @@ class ArtefactsVerificationTest {
     @DisplayName("T18/T19/T20/T23 - artefacts KO complets, DOM reel, password blanchi")
     void artefacts_ko_complets() throws IOException {
         Path folder = latestKoFolderForProducer();
-        System.out.println("[T18] dossier KO analyse : " + folder);
+        System.out.println("[T18] INFO : dossier KO analyse = " + folder);
 
         // T18 : 3 fichiers attendus.
         Path errorLog = folder.resolve("ERROR.log");
@@ -82,7 +82,7 @@ class ArtefactsVerificationTest {
                         return null;
                     });
         }
-        System.out.println("[T18] dump HTML : " + html.getFileName());
+        System.out.println("[T18] INFO : dump HTML present = " + html.getFileName());
 
         // T19 : DOM reel de form.html (non echappe, vrai markup).
         String dom = Files.readString(html);
@@ -102,7 +102,8 @@ class ArtefactsVerificationTest {
         // TestFailureManager ET RawDomCaptureListener sont actifs par presence du jar.
         String failContent = Files.readString(failLog);
         assertFalse(failContent.isBlank(), "T23/FAIL.log : contenu attendu");
-        System.out.println("[T23] services actifs (artefacts + dump DOM brut) confirmes.");
+        System.out.println("[T23] RESULTAT : services actifs (artefacts + dump DOM brut) confirmes"
+                + " | aucune exception => cas passant confirme");
     }
 }
 

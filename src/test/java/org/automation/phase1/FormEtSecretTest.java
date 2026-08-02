@@ -80,11 +80,14 @@ class FormEtSecretTest {
             new WebSync(SyncTimeout.SHORT).shouldBeVisible(By.id("missing"));
             apres.set(true); // ne doit jamais etre atteint : l'assertion dure stoppe la suite
         }, "T16 : should* dur (soft=false) doit lever AssertionError");
-        System.out.println("[T16] " + err.getMessage());
         assertFalse(apres.get(),
                 "T16 : l'instruction apres un should* dur ne doit pas s'executer");
         assertTrue(err.getMessage() != null && err.getMessage().contains("missing"),
                 "T16 : le message doit citer le locator (#missing), msg=" + err.getMessage());
+        System.out.println("[T16] RESULTAT : exception attendue=AssertionError (should* dur, soft=false)"
+                + " | levee=OUI | type reel=" + err.getClass().getName()
+                + " | message=\"" + err.getMessage() + "\" | instruction suivante non executee"
+                + " => cas non passant confirme");
     }
 }
 

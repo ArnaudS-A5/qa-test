@@ -40,7 +40,8 @@ class SoftAssertTest {
         web.shouldContainText(By.id("text"), "IMPOSSIBLE"); // KO 2 collecte
 
         // Marqueur : si on arrive ici, c'est que le mode soft n'a PAS stoppe a la 1re (attendu).
-        System.out.println("[T17] les deux should* KO ont ete collectes (soft actif) — echec attendu en fin.");
+        System.out.println("[T17] RESULTAT : 2 should* soft collectes (soft=true)"
+                + " => echec agrege attendu EN FIN de test (cas non passant volontaire)");
     }
 }
 

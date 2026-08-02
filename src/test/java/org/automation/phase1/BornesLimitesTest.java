@@ -43,7 +43,8 @@ class BornesLimitesTest {
         long start = System.nanoTime();
         var el = driver.findElement(TARGET); // brut : s'appuie sur l'implicit wait natif (3 s)
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L1] findElement brut OK en " + ms + " ms");
+        System.out.println("[L1] RESULTAT : findElement brut trouve en " + ms + " ms"
+                + " | aucune exception (implicit wait natif 3s) => cas passant confirme");
         assertTrue(el.isDisplayed(), "L1 : element trouve attendu");
         assertTrue(ms < 3200, "L1 : doit trouver avant ~3 s, mesure=" + ms + "ms");
     }
@@ -55,10 +56,12 @@ class BornesLimitesTest {
         open("appear.html", "delay=3200");
         WebDriver driver = getDriver();
         long start = System.nanoTime();
-        assertThrows(NoSuchElementException.class, () -> driver.findElement(TARGET),
-                "L2 : NoSuchElement attendu au-dela de l'implicit wait");
+        NoSuchElementException ex = assertThrows(NoSuchElementException.class,
+                () -> driver.findElement(TARGET), "L2 : NoSuchElement attendu au-dela de l'implicit wait");
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L2] findElement brut a leve NoSuchElement en " + ms + " ms");
+        System.out.println("[L2] RESULTAT : exception attendue=NoSuchElementException | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | apres " + ms + " ms (> implicit wait 3s)"
+                + " => cas non passant confirme");
     }
 
     // ---- L3 : profil MEDIUM — borne basse ----
@@ -71,7 +74,8 @@ class BornesLimitesTest {
         long start = System.nanoTime();
         web.click(TARGET);
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L3] WebSync.click OK en " + ms + " ms");
+        System.out.println("[L3] RESULTAT : WebSync.click abouti en " + ms + " ms"
+                + " | aucune exception (cible < timeout MEDIUM) => cas passant confirme");
         assertTrue(web.containsText(By.id("status"), "clicked"), "L3 : clic effectif attendu");
     }
 
@@ -86,7 +90,9 @@ class BornesLimitesTest {
         SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET),
                 "L4 : SyncException attendue au timeout");
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L4] SyncException en " + ms + " ms : " + ex.getMessage());
+        System.out.println("[L4] RESULTAT : exception attendue=SyncException [ABSENT] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | apres " + ms + " ms"
+                + " | message=\"" + ex.getMessage() + "\" => cas non passant confirme");
         assertTrue(ex.getMessage() != null && ex.getMessage().contains("[ABSENT]"),
                 "L4 : code [ABSENT] attendu, message=" + ex.getMessage());
     }
@@ -101,7 +107,9 @@ class BornesLimitesTest {
         long start = System.nanoTime();
         SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET));
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L5-SHORT] SyncException en " + ms + " ms : " + ex.getMessage());
+        System.out.println("[L5-SHORT] RESULTAT : exception attendue=SyncException [ABSENT] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | apres " + ms + " ms"
+                + " | message=\"" + ex.getMessage() + "\" => cas non passant confirme");
         assertTrue(ex.getMessage().contains("[ABSENT]"), "L5 : [ABSENT] attendu");
     }
 
@@ -114,7 +122,8 @@ class BornesLimitesTest {
         long start = System.nanoTime();
         web.click(TARGET);
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L5-LONG] WebSync.click OK en " + ms + " ms");
+        System.out.println("[L5-LONG] RESULTAT : WebSync.click abouti en " + ms + " ms"
+                + " | aucune exception (cible < timeout LONG) => cas passant confirme");
         assertTrue(web.containsText(By.id("status"), "clicked"));
     }
 
@@ -127,7 +136,8 @@ class BornesLimitesTest {
         long start = System.nanoTime();
         web.click(TARGET);
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[L5-MEDIUM-reel] WebSync.click OK en " + ms + " ms (attendu ~14s)");
+        System.out.println("[L5-MEDIUM] RESULTAT : WebSync.click abouti en " + ms + " ms"
+                + " (attente reelle ~14s < 15s) | aucune exception => cas passant confirme");
         assertTrue(ms >= 13000, "L5 : le socle a bien attendu ~14s, mesure=" + ms + "ms");
         assertTrue(web.containsText(By.id("status"), "clicked"));
     }
@@ -142,7 +152,8 @@ class BornesLimitesTest {
         long startWeb = System.nanoTime();
         web.click(TARGET);
         long msWeb = (System.nanoTime() - startWeb) / 1_000_000;
-        System.out.println("[L6] WebSync.click (polling ~250ms) OK en " + msWeb + " ms");
+        System.out.println("[L6] RESULTAT : WebSync.click (polling ~250ms) abouti en " + msWeb + " ms"
+                + " | aucune exception => cas passant confirme");
         assertTrue(web.containsText(By.id("status"), "clicked"));
 
         // Nouvelle page pour comparer le brut sur un element apparaissant a 2500ms.
@@ -150,7 +161,7 @@ class BornesLimitesTest {
         long startRaw = System.nanoTime();
         var el = getDriver().findElement(TARGET); // brut : attend via implicit wait ~ jusqu'a 3s
         long msRaw = (System.nanoTime() - startRaw) / 1_000_000;
-        System.out.println("[L6] findElement brut OK en " + msRaw + " ms");
+        System.out.println("[L6] INFO : findElement brut (comparaison) abouti en " + msRaw + " ms");
         assertTrue(el.isDisplayed());
         // Le brut ne rend la main qu'apres ~2.5s (attente implicite) ; WebSync doit avoir ete <= brut+marge.
         assertTrue(msWeb <= msRaw + 500,
@@ -170,8 +181,9 @@ class BornesLimitesTest {
         boolean enabled = web.isEnabled(bidon);
         boolean contains = web.containsText(bidon, "x");
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[T14] is*/contains sur absent en " + ms + " ms (visible=" + visible
-                + ", present=" + present + ", enabled=" + enabled + ", contains=" + contains + ")");
+        System.out.println("[T14] RESULTAT : is*/contains sur absent = tous false en " + ms + " ms"
+                + " | aucune exception (contrat 'ne leve jamais') | visible=" + visible + " present=" + present
+                + " enabled=" + enabled + " contains=" + contains + " => cas passant confirme");
         assertFalse(visible || present || enabled || contains, "T14 : tous false attendus");
         assertTrue(ms < 2000, "T14 : doit etre quasi-instantane (< 2s), mesure=" + ms + "ms");
     }
@@ -209,7 +221,9 @@ class BornesLimitesTest {
         open("appear.html", "delay=0");
         WebSync web = new WebSync(SyncTimeout.SHORT); // abaisse pour rester rapide
         SyncException ex = assertThrows(SyncException.class, () -> web.click(By.id("locator-bidon")));
-        System.out.println("[T2] SyncException : " + ex.getMessage());
+        System.out.println("[T2] RESULTAT : exception attendue=SyncException [ABSENT] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | message=\"" + ex.getMessage()
+                + "\" => cas non passant confirme");
         assertTrue(ex.getMessage().contains("[ABSENT]"), "T2 : [ABSENT] attendu");
     }
 
@@ -223,7 +237,8 @@ class BornesLimitesTest {
         // Plusieurs lectures successives : chacune re-resout le By, sans StaleElementReferenceException.
         for (int i = 0; i < 5; i++) {
             String txt = web.getText(TARGET);
-            System.out.println("[T5] lecture " + i + " => '" + txt + "'");
+            System.out.println("[T5] lecture " + i + " => '" + txt + "'"
+                    + " (re-resolution transparente, aucune StaleElement)");
             assertTrue(txt.startsWith("v"), "T5 : texte du noeud re-rendu attendu (vN)");
             try { Thread.sleep(120); } catch (InterruptedException ignored) { }
         }
@@ -242,13 +257,17 @@ class BornesLimitesTest {
         // Container bidon : le maillon fautif est le container.
         SyncException exContainer = assertThrows(SyncException.class,
                 () -> web.within(By.id("box-bidon")).click(By.id("child")));
-        System.out.println("[T11] container bidon : " + exContainer.getMessage());
+        System.out.println("[T11] RESULTAT (container bidon) : exception attendue=SyncException [ABSENT] sur le container"
+                + " | levee=OUI | type reel=" + exContainer.getClass().getName()
+                + " | message=\"" + exContainer.getMessage() + "\"");
         assertTrue(exContainer.getMessage().contains("[ABSENT]"), "T11 : [ABSENT] sur container");
 
         // Child bidon : le maillon fautif est le child.
         SyncException exChild = assertThrows(SyncException.class,
                 () -> web.within(By.id("box")).click(By.id("child-bidon")));
-        System.out.println("[T11] child bidon : " + exChild.getMessage());
+        System.out.println("[T11] RESULTAT (child bidon) : exception attendue=SyncException [ABSENT] sur le child"
+                + " | levee=OUI | type reel=" + exChild.getClass().getName()
+                + " | message=\"" + exChild.getMessage() + "\" => cas non passant confirme (bon maillon designe)");
         assertTrue(exChild.getMessage().contains("[ABSENT]"), "T11 : [ABSENT] sur child");
     }
 }

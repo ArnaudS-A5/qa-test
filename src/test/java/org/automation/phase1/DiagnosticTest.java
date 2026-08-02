@@ -13,7 +13,6 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
@@ -55,8 +54,10 @@ class DiagnosticTest {
     void T7_hidden() {
         WebSync web = openAndSync("hidden.html");
         SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET));
-        System.out.println("[T7] " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("[HIDDEN]"), "T7 : [HIDDEN] attendu, msg=" + ex.getMessage());
+        assertTrue(ex.getMessage().contains("[HIDDEN]"), "T7 : code [HIDDEN] attendu, message=" + ex.getMessage());
+        System.out.println("[T7] RESULTAT : exception attendue=SyncException porteuse de [HIDDEN] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | message=\"" + ex.getMessage()
+                + "\" => cas non passant confirme");
     }
 
     // ---- T8 : DISABLED ----
@@ -65,8 +66,10 @@ class DiagnosticTest {
     void T8_disabled() {
         WebSync web = openAndSync("disabled.html");
         SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET));
-        System.out.println("[T8] " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("[DISABLED]"), "T8 : [DISABLED] attendu, msg=" + ex.getMessage());
+        assertTrue(ex.getMessage().contains("[DISABLED]"), "T8 : code [DISABLED] attendu, message=" + ex.getMessage());
+        System.out.println("[T8] RESULTAT : exception attendue=SyncException porteuse de [DISABLED] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | message=\"" + ex.getMessage()
+                + "\" => cas non passant confirme");
     }
 
     // ---- T9 : INTERCEPTED ----
@@ -75,9 +78,11 @@ class DiagnosticTest {
     void T9_intercepted() {
         WebSync web = openAndSync("overlay.html");
         SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET));
-        System.out.println("[T9] " + ex.getMessage());
         assertTrue(ex.getMessage().contains("[INTERCEPTED]"),
-                "T9 : [INTERCEPTED] attendu, msg=" + ex.getMessage());
+                "T9 : code [INTERCEPTED] attendu, message=" + ex.getMessage());
+        System.out.println("[T9] RESULTAT : exception attendue=SyncException porteuse de [INTERCEPTED] | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | message=\"" + ex.getMessage()
+                + "\" => cas non passant confirme");
     }
 
     // ---- T10 : hors viewport SCROLLABLE, clic standard (scroll-into-view attendu) ----
@@ -101,7 +106,8 @@ class DiagnosticTest {
         // Journal des evenements pointeur reellement recus par la cible (cf. offscreen.html).
         String pointerLog = (String) ((JavascriptExecutor) getDriver())
                 .executeScript("return window.__pointerLog;");
-        System.out.println("[T10] pointerLog = " + pointerLog);
+        System.out.println("[T10] RESULTAT : clic standard abouti (scroll-into-view) | aucune exception"
+                + " | pointerLog=" + pointerLog + " => cas passant confirme");
 
         pauseObservation(); // ~1 s pour observer visuellement le resultat
     }
@@ -120,23 +126,17 @@ class DiagnosticTest {
         web.type(By.id("field"), "hello");
         assertEquals("hello", web.getValue(By.id("field")), "T10bis : saisie effective");
 
-        // Clic bas-niveau via Actions (scroll-into-view attendu, pas d'OUT_OF_BOUNDS).
+        // Clic bas-niveau via Actions, ecrit comme attendu PASSANT (scroll-into-view auto).
+        // Si MoveTargetOutOfBoundsException survenait, le test remonterait l'erreur (finding).
         WebElement target = getDriver().findElement(TARGET);
-        boolean outOfBounds = false;
-        try {
-            new Actions(getDriver()).moveToElement(target).click().perform();
-        } catch (MoveTargetOutOfBoundsException e) {
-            outOfBounds = true;
-            System.out.println("[T10bis] MoveTargetOutOfBoundsException : " + e.getMessage());
-        }
+        new Actions(getDriver()).moveToElement(target).click().perform();
         boolean clicked = web.containsText(By.id("status"), "clicked");
         // Trace pointeur : doit etre identique a celle de T10 (meme sequence 'trusted').
         String pointerLog = (String) ((JavascriptExecutor) getDriver())
                 .executeScript("return window.__pointerLog;");
-        System.out.println("[T10bis] outOfBounds=" + outOfBounds + " ; clicked=" + clicked
-                + " ; pointerLog = " + pointerLog);
-        assertTrue(clicked && !outOfBounds,
-                "T10bis : Actions.moveToElement doit cliquer via scroll auto, sans OUT_OF_BOUNDS");
+        assertTrue(clicked, "T10bis : le clic Actions doit aboutir (scroll auto), sans OUT_OF_BOUNDS");
+        System.out.println("[T10bis] RESULTAT : clic Actions abouti | aucune exception (pas d'OUT_OF_BOUNDS)"
+                + " | pointerLog=" + pointerLog + " => cas passant confirme (equivalence avec T10)");
 
         pauseObservation(); // ~1 s pour observer visuellement le resultat
     }

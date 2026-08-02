@@ -9,9 +9,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 
 import static net.serenitybdd.core.Serenity.getDriver;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -28,20 +31,19 @@ class PageLoadEtConfigTest {
         // Un simple getDriver() n'arme rien -> la navigation ne serait jamais bornee.
         WebSync web = new WebSync();
         web.isPresent(By.tagName("html"));
+        // Page bloquee 8s ; pageLoadTimeout abaisse a 5s via -Dqa.sync.pageLoadTimeout=5s.
+        String slowPage = Fixtures.url("slowload.html", "ms=8000");
+        WebDriver driver = getDriver();
         long start = System.nanoTime();
-        boolean bounded = false;
-        try {
-            // Page bloquee 8s ; pageLoadTimeout abaisse a 5s via -Dqa.sync.pageLoadTimeout=5s.
-            getDriver().get(Fixtures.url("slowload.html", "ms=8000"));
-        } catch (WebDriverException e) {
-            bounded = true;
-            System.out.println("[T6] navigation bornee : " + e.getClass().getSimpleName()
-                    + " - " + e.getMessage());
-        }
+        WebDriverException ex = assertThrows(WebDriverException.class,
+                () -> driver.get(slowPage),
+                "T6 : la navigation doit echouer (timeout) avant les 8s de blocage");
         long ms = (System.nanoTime() - start) / 1_000_000;
-        System.out.println("[T6] duree navigation = " + ms + " ms (attendu ~5s, < 8s)");
-        assertTrue(bounded, "T6 : la navigation doit echouer (timeout) avant les 8s de blocage");
+
         assertTrue(ms < 7500, "T6 : borne ~5s attendue (< 8s de blocage), mesure=" + ms + "ms");
+        System.out.println("[T6] RESULTAT : exception attendue=WebDriverException (borne pageLoadTimeout) | levee=OUI"
+                + " | type reel=" + ex.getClass().getName() + " | navigation bornee en " + ms + " ms (< 8s)"
+                + " => cas non passant confirme");
     }
 
     // ---- T24 : precedence -D > serenity.conf ----
@@ -51,10 +53,11 @@ class PageLoadEtConfigTest {
         // On lit environment : serenity.conf = 'qatest', on lance ce test avec -Denvironment=override-D.
         EnvironmentVariables env = SystemEnvironmentVariables.createEnvironmentVariables();
         String environment = env.getProperty("environment");
-        System.out.println("[T24] environment resolu = " + environment);
-        assertTrue("override-D".equals(environment),
-                "T24 : la valeur -D (override-D) doit primer sur serenity.conf (qatest), obtenu=" + environment);
+        assertEquals("override-D", environment,
+                "T24 : la valeur -D (override-D) doit primer sur serenity.conf (qatest)");
         // Sanity : un WebSync s'instancie sans souci avec cette config.
         new WebSync().isPresent(By.id("nimporte"));
+        System.out.println("[T24] RESULTAT : environment resolu=" + environment
+                + " (attendu override-D via -D, serenity.conf=qatest) | aucune exception => cas passant confirme");
     }
 }
