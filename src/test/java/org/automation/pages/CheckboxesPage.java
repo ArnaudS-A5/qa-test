@@ -1,8 +1,7 @@
 package org.automation.pages;
 
-import com.example.qa.api.sync.WebSync;
+import com.example.qa.api.page.QaPageObject;
 import net.serenitybdd.annotations.DefaultUrl;
-import net.serenitybdd.core.pages.PageObject;
 import org.openqa.selenium.By;
 
 /**
@@ -12,25 +11,17 @@ import org.openqa.selenium.By;
  *
  * <p>Marqueur unique de cette page : l'élément {@code #checkboxes} (absent de la page de login).
  *
- * <p><b>Migré vers {@code WebSync}</b> (locators {@link By}, synchro du socle) — cf.
- * {@link LoginPage}. La navigation ({@code open()}) reste fournie par {@link PageObject}.
+ * <p><b>Basé sur {@link QaPageObject} du socle</b> (champ {@code web} hérité, locators {@link By},
+ * synchro maison) — cf. {@link LoginPage}. La navigation ({@code open()}) reste fournie par la
+ * {@code PageObject} Serenity sous-jacente.
  */
 @DefaultUrl("/checkboxes")
-public class CheckboxesPage extends PageObject {
+public class CheckboxesPage extends QaPageObject {
 
     private static final By CHECKBOXES_FORM = By.id("checkboxes");
 
-    private WebSync web;
-
-    private WebSync web() {
-        if (web == null) {
-            web = new WebSync();
-        }
-        return web;
-    }
-
     /** Force la résolution réelle de l'élément → garantit que le DOM de /checkboxes est chargé. */
     public boolean isFormDisplayed() {
-        return web().isVisible(CHECKBOXES_FORM);
+        return web.isVisible(CHECKBOXES_FORM);
     }
 }
