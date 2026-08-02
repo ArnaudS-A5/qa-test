@@ -24,8 +24,10 @@ class PageLoadEtConfigTest {
     @Test
     @DisplayName("T6 - slowload bloque 8s avec pageLoadTimeout abaisse a 5s : navigation bornee ~5s")
     void T6_page_load_timeout() {
-        // Force le 1er contact driver pour que le socle pose le pageLoadTimeout auto.
-        getDriver();
+        // 1er contact WebSync : c'est lui qui pose le pageLoadTimeout sur le driver (cf. briefing).
+        // Un simple getDriver() n'arme rien -> la navigation ne serait jamais bornee.
+        WebSync web = new WebSync();
+        web.isPresent(By.tagName("html"));
         long start = System.nanoTime();
         boolean bounded = false;
         try {
