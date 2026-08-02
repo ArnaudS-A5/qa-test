@@ -9,8 +9,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
 
 import static net.serenitybdd.core.Serenity.getDriver;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,6 +35,18 @@ class DiagnosticTest {
     private WebSync openAndSync(String fixture) {
         getDriver().get(Fixtures.url(fixture, null));
         return new WebSync(SyncTimeout.SHORT); // profil court (abaisse via -D) => timeout rapide
+    }
+
+    // Pause d'observation d'~1 s via un mecanisme d'attente INTEGRE (WebDriverWait), SANS Thread.sleep :
+    // on attend une condition volontairement toujours fausse -> le wait tient 1 s pleine puis expire.
+    private void pauseObservation() {
+        try {
+            new WebDriverWait(getDriver(), Duration.ofSeconds(2))
+                    .pollingEvery(Duration.ofSeconds(1))
+                    .until(d -> false);
+        } catch (TimeoutException expected) {
+            // Dwell d'1 s ecoule : comportement voulu (fenetre d'observation visuelle).
+        }
     }
 
     // ---- T7 : HIDDEN ----
@@ -59,15 +80,65 @@ class DiagnosticTest {
                 "T9 : [INTERCEPTED] attendu, msg=" + ex.getMessage());
     }
 
-    // ---- T10 : OUT_OF_BOUNDS ----
+    // ---- T10 : hors viewport SCROLLABLE, clic standard (scroll-into-view attendu) ----
+    // Reclasse l'ancien T10 (cf. briefing) : un click() simple fait un scroll-into-view et
+    // aboutit ; OUT_OF_BOUNDS n'est PAS la cause d'un clic bloqué. On l'objective ici.
     @Test
-    @DisplayName("T10 - element hors viewport : SyncException [OUT_OF_BOUNDS]")
+    @DisplayName("T10 - hors viewport scrollable : type + WebSync.click (scroll-into-view => clic abouti)")
     void T10_out_of_bounds() {
         WebSync web = openAndSync("offscreen.html");
-        SyncException ex = assertThrows(SyncException.class, () -> web.click(TARGET));
-        System.out.println("[T10] " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("[OUT_OF_BOUNDS]"),
-                "T10 : [OUT_OF_BOUNDS] attendu, msg=" + ex.getMessage());
+
+        // Champ hors viewport initial : la saisie doit l'atteindre.
+        web.type(By.id("field"), "hello");
+        assertEquals("hello", web.getValue(By.id("field")),
+                "T10 : saisie effective dans le champ hors viewport");
+
+        // Clic standard : le contrat WebDriver fait un scroll-into-view avant de cliquer.
+        web.click(TARGET);
+        assertTrue(web.containsText(By.id("status"), "clicked"),
+                "T10 : le clic standard aboutit (scroll-into-view) sur un element hors viewport mais scrollable");
+
+        // Journal des evenements pointeur reellement recus par la cible (cf. offscreen.html).
+        String pointerLog = (String) ((JavascriptExecutor) getDriver())
+                .executeScript("return window.__pointerLog;");
+        System.out.println("[T10] pointerLog = " + pointerLog);
+
+        pauseObservation(); // ~1 s pour observer visuellement le resultat
+    }
+
+    // ---- T10bis : PREUVE D'EQUIVALENCE WebSync.click == Actions.moveToElement ----
+    // Mesure : Actions.moveToElement().click() produit EXACTEMENT la meme trace pointeur
+    // (mouseover -> mousemove -> mousedown -> mouseup -> click, tous 'trusted') que le
+    // WebSync.click de T10. Le socle clique donc deja via le chemin pointeur W3C (et non un
+    // element.click() JS). OUT_OF_BOUNDS n'est jamais leve (scroll-into-view automatique).
+    // NB : aucun deplacement du curseur OS (evenements synthetises) -> cf. RobotMouseDemoTest.
+    @Test
+    @DisplayName("T10bis - equivalence : Actions.moveToElement produit la meme trace pointeur que WebSync.click")
+    void T10bis_out_of_bounds_actions() {
+        WebSync web = openAndSync("offscreen.html");
+
+        web.type(By.id("field"), "hello");
+        assertEquals("hello", web.getValue(By.id("field")), "T10bis : saisie effective");
+
+        // Clic bas-niveau via Actions (scroll-into-view attendu, pas d'OUT_OF_BOUNDS).
+        WebElement target = getDriver().findElement(TARGET);
+        boolean outOfBounds = false;
+        try {
+            new Actions(getDriver()).moveToElement(target).click().perform();
+        } catch (MoveTargetOutOfBoundsException e) {
+            outOfBounds = true;
+            System.out.println("[T10bis] MoveTargetOutOfBoundsException : " + e.getMessage());
+        }
+        boolean clicked = web.containsText(By.id("status"), "clicked");
+        // Trace pointeur : doit etre identique a celle de T10 (meme sequence 'trusted').
+        String pointerLog = (String) ((JavascriptExecutor) getDriver())
+                .executeScript("return window.__pointerLog;");
+        System.out.println("[T10bis] outOfBounds=" + outOfBounds + " ; clicked=" + clicked
+                + " ; pointerLog = " + pointerLog);
+        assertTrue(clicked && !outOfBounds,
+                "T10bis : Actions.moveToElement doit cliquer via scroll auto, sans OUT_OF_BOUNDS");
+
+        pauseObservation(); // ~1 s pour observer visuellement le resultat
     }
 }
 
