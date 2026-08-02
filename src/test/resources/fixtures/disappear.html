@@ -3,13 +3,30 @@
 <head>
   <meta charset="utf-8">
   <title>disappear</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 820px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-wait { margin: 4px 0; font-size: 14px; color: #0f172a; }
+    .qa-val { font-weight: 700; color: #b91c1c; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    #target { margin-top: 10px; font-size: 15px; }
+  </style>
 </head>
 <body>
   <!--
     Fixture des waits négatifs (T15, waitUntilNotVisible / waitForElementToDisappear).
     #target présent au chargement, retiré du DOM après ?delay=N (ms).
   -->
-  <h1>disappear</h1>
+  <h1>disappear — disparition différée d'un élément</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Ici l'élément <code>#target</code> est <b>présent au chargement</b> puis <b>retiré du DOM</b> après un délai. On teste un <b>wait négatif</b> (<code>waitUntilNotVisible</code> / <code>waitForElementToDisappear</code>).</p>
+    <p class="qa-wait">Ce qu'on attend : <b>la disparition de <code>#target</code></b> — retrait programmé dans :
+      <span class="qa-val" id="delay-txt">…</span></p>
+    <p class="qa-expect">T15 : le wait doit se résoudre quand l'élément quitte le DOM (et non expirer).</p>
+  </div>
   <div id="target">target</div>
   <script>
     (function () {
@@ -21,6 +38,13 @@
       }, delay);
     })();
   </script>
+  <script>
+    // Affichage descriptif uniquement — n'affecte pas la mécanique ci-dessus.
+    (function () {
+      var delay = Number.parseInt(new URLSearchParams(window.location.search).get('delay') || '0', 10);
+      var s = (delay / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+      document.getElementById('delay-txt').textContent = delay + ' ms (' + s + ' s)';
+    })();
+  </script>
 </body>
 </html>
-

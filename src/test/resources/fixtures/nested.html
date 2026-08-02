@@ -3,6 +3,31 @@
 <head>
   <meta charset="utf-8">
   <title>nested</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 820px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-wait { margin: 4px 0; font-size: 14px; color: #0f172a; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    /* Rend l'imbrication container -> child visible, sans ajouter de nœud DOM. */
+    #box {
+      border: 2px dashed #2563eb;
+      border-radius: 6px;
+      padding: 28px 14px 14px;
+      margin-top: 8px;
+      max-width: 320px;
+      position: relative;
+    }
+    #box::before {
+      content: "container #box";
+      position: absolute;
+      top: 4px; left: 8px;
+      font-size: 12px; font-weight: 700; color: #2563eb;
+    }
+    #child { position: relative; }
+  </style>
 </head>
 <body>
   <!--
@@ -12,10 +37,18 @@
       - within(#boxBidon).click(#child)    → cause = container (maillon fautif)
       - within(#box).click(#childBidon)    → cause = child (maillon fautif)
   -->
-  <h1>nested</h1>
+  <h1>nested — résolution imbriquée <code>within</code></h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Résolution en <b>deux temps</b> : on résout d'abord le <b>container</b> <code>#box</code>, puis on cherche l'enfant <code>#child</code> <b>à l'intérieur</b> de ce container.</p>
+    <p class="qa-wait">Ce qu'on attend : <code>within(#box).click(#child)</code> réussit. Si un maillon est faux, le diagnostic doit désigner <b>lequel</b> :</p>
+    <p class="qa-expect">
+      • <code>within(#box-bidon).click(#child)</code> → cause = <b>container</b> introuvable ·
+      • <code>within(#box).click(#child-bidon)</code> → cause = <b>child</b> introuvable dans le container.
+      <br>Pas d'attente temporelle : la structure est figée au chargement (T11).
+    </p>
+  </div>
   <div id="box">
     <button id="child" type="button">child</button>
   </div>
 </body>
 </html>
-

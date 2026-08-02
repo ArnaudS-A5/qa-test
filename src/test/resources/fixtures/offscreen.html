@@ -4,21 +4,81 @@
   <meta charset="utf-8">
   <title>offscreen</title>
   <style>
-    #target {
-      position: absolute;
-      top: 5000px;
-      left: 0;
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 820px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-wait { margin: 4px 0; font-size: 14px; color: #0f172a; }
+    .qa-val { font-weight: 700; color: #b91c1c; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    /* Zone de défilement EN FLUX : garantit un vrai ascenseur (contrairement à
+       un position:absolute hors flux, qui laissait la cible hors champ sans scroll fiable). */
+    #spacer {
+      height: 2000px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 6px;
+      color: #94a3b8;
+      padding-top: 12px;
+      text-align: center;
     }
-    body { height: 6000px; }
+    #zone { margin-top: 24px; }
+    #zone label { display: block; margin-bottom: 10px; }
+    #status { margin-top: 8px; font-weight: 700; color: #15803d; }
+    #pointerlog { margin-top: 10px; font-family: ui-monospace, monospace; font-size: 12px; color: #334155; white-space: pre-wrap; max-width: 820px; }
   </style>
 </head>
 <body>
   <!--
-    Fixture diagnostic [OUT_OF_BOUNDS] (T10).
-    #target est présent et visible mais positionné hors viewport (top:5000px).
+    Fixture hors-viewport SCROLLABLE (T10 / T10bis).
+    #field (saisissable) et #target sont placés tout en bas d'une page longue :
+    hors du viewport initial, mais atteignables via l'ascenseur (spacer en flux).
+    Sert à comparer deux actions :
+      - T10    : WebSync.click (scroll-into-view attendu par le contrat WebDriver)
+      - T10bis : Actions.moveToElement(...).click() (déclenche-t-il OUT_OF_BOUNDS ?)
   -->
-  <h1>offscreen</h1>
-  <button id="target" type="button">target</button>
+  <h1>offscreen — élément hors viewport mais scrollable</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Le champ <code>#field</code> et le bouton <code>#target</code> sont placés <b>tout en bas d'une page longue</b> : hors du viewport initial, mais <b>atteignables via l'ascenseur</b> (<span class="qa-val">≈ 2000 px plus bas</span>).</p>
+    <p class="qa-wait">Ce qu'on attend : saisir dans <code>#field</code> puis cliquer <code>#target</code> — on observe si l'action <b>scrolle physiquement</b> la cible dans la vue ou lève une erreur de viewport.</p>
+    <p class="qa-expect">T10 : clic standard (<code>scroll-into-view</code> attendu). T10bis : clic via <code>Actions.moveToElement</code> — on vérifie s'il déclenche <code>MoveTargetOutOfBoundsException</code> ou scrolle lui aussi.</p>
+  </div>
+  <div id="spacer">↓ zone de défilement (ascenseur) — les cibles sont tout en bas ↓</div>
+  <div id="zone">
+    <label>Champ hors viewport initial :
+      <input id="field" type="text" name="field">
+    </label>
+    <button id="target" type="button">target</button>
+    <div id="status">waiting</div>
+    <div id="pointerlog">journal pointeur : (aucun evenement)</div>
+  </div>
+  <script>
+    // Instrumentation d'observation : enregistre les evenements pointeur reels sur #field/#target.
+    // Permet de distinguer un vrai deplacement pointeur (mousemove/mouseover, Actions)
+    // d'un simple click() JS (aucun mouvement). window.__pointerLog est lu par les tests.
+    (function () {
+      var log = [];
+      window.__pointerLog = '(aucun evenement)';
+      function render() {
+        window.__pointerLog = log.join(' | ');
+        document.getElementById('pointerlog').textContent = 'journal pointeur : ' + window.__pointerLog;
+      }
+      function record(el, tag) {
+        ['mousemove', 'mouseover', 'mousedown', 'mouseup', 'click'].forEach(function (type) {
+          el.addEventListener(type, function (e) {
+            log.push(tag + ':' + type + '@' + Math.round(e.clientX) + ',' + Math.round(e.clientY)
+              + (e.isTrusted ? '(trusted)' : '(synth)'));
+            render();
+          });
+        });
+      }
+      record(document.getElementById('field'), 'field');
+      record(document.getElementById('target'), 'target');
+    })();
+    // Comportement minimal : marque le clic effectif (permet d'observer si le clic a abouti).
+    document.getElementById('target').addEventListener('click', function () {
+      document.getElementById('status').textContent = 'clicked';
+    });
+  </script>
 </body>
 </html>
-
