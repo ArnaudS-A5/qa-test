@@ -17,7 +17,13 @@
 - **Corrections côté test** (cf. `qa-test-briefing-erreurs-phase1.md`) : **T6** (contact `WebSync` avant
   navigation), **T10** reclassé (scroll-into-view + **T10bis**, preuve d'équivalence pointeur), **T16**
   (attend `AssertionError`), **A9** (secret : zéro sortie du clair).
-- **PHASE 2 migrée vers `WebSync`** (`LoginPage`/`CheckboxesPage`), relancée verte.
+- **PHASE 2 basée sur `QaPageObject`** (`LoginPage`/`CheckboxesPage`/`DelayedButtonPage`, champ `web`
+  hérité), relancée verte. Ajout de deux validations réelles : **`DynamicWaitTest`** (passage du profil
+  `SyncTimeout` — `#delayed` à 10 s : SHORT échoue / MEDIUM réussit, cross-browser) et
+  **`ThrottledLoadTest`** (throttle **2G réel** CDP, Chrome only, `pageLoadTimeout` borné).
+- **Conventions appliquées à tout le projet** : Steps « attendu passant » (l'exception est vérifiée par
+  `assertThrows` côté test, jamais renvoyée par une Step) ; logs uniformes `RESULTAT : exception
+  attendue=… | levee=OUI | type reel=… | message="…"` (non passant) / `… | aucune exception` (passant).
 
 **Résultat campagne 2026-08-02 (Chrome, Java 17) — 24 tests PHASE 1 exécutables : tous ✅.** Commandes
 exactes : README, section « Lancer une campagne complète ». Les 8 anciens KO passent désormais :

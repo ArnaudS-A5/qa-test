@@ -42,9 +42,11 @@ mvn test -Dtest=DiagnosticTest -Dmaven.test.failure.ignore=true
 Les tests aux limites règlent le comportement du socle via system properties (précédence `-D` >
 `serenity.conf`, cf. T24). Clés utiles :
 
-- `-Dqa.sync.timeout.<short|medium|long|extra_long>=2s` — abaisse un profil `SyncTimeout` (défauts
-  5/15/60/120 s) pour rester rapide. Format accepté : `Nms`, `Ns`, ou `N` (secondes).
-- `-Dqa.sync.pageLoadTimeout=5s` — plafond de chargement de page (T6).
+- `-Dqa.sync.timeout.<short|medium|long|extraLong>=2s` — abaisse un profil `SyncTimeout` (défauts
+  5/15/60/120 s) pour rester rapide. Format accepté : `Nms`, `Ns`, ou `N` (secondes). ⚠️ La 4ᵉ clé est
+  `extraLong` (camelCase), pas `extra_long` — vérifié dans le bytecode du socle.
+- `-Dqa.sync.pageLoadTimeout=5s` — plafond de chargement de page (défaut socle 2 min ; T6, ThrottledLoadTest).
+- `-Dqa.sync.pollingInterval=250ms` — intervalle de sondage du poll `WebSync` (défaut 250 ms).
 - `-Dqa.assertions.soft=true` — bascule en soft-assert (T17).
 - `-Denvironment=<valeur>` — pilote le `{ENV}` du nommage des artefacts `KO__` (défaut `qatest`).
 
@@ -70,12 +72,16 @@ pom.xml                              # parent qa-parent ; UNE dépendance : qa-s
 src/test/java/org/automation/
   phase1/                            # PHASE 1 — tests aux limites sur fixtures locales
     BornesLimitesTest                #   L1–L6, T1/T2/T5/T11/T14/T15 (bornes attente/horloge)
-    DiagnosticTest                   #   T7–T10 (codes du diagnostic actif)
+    DiagnosticTest                   #   T7–T10 + T10bis (diagnostic actif ; equivalence pointeur WebSync/Actions)
     PageLoadEtConfigTest             #   T6 (pageLoadTimeout), T24 (précédence -D)
     FormEtSecretTest                 #   surface formulaire, T22 (Secret), T16 (should* dur)
     SoftAssertTest                   #   T17 (soft-assert agrégé) — @Disabled
     Artefacts{Producer,Verification}Test  # T18–T23 via fixture — @Disabled
-  pages/  steps/  AuthenticationTest # PHASE 2 — PageObjects/Steps sur site réel + non-régression
+  pages/  steps/                     # PHASE 2 — PageObjects (étendent QaPageObject du socle : `web` hérité) + Steps
+    AuthenticationTest               #   smoke login réel + capture KO (@Disabled)
+    DynamicWaitTest                  #   passage du profil SyncTimeout (#delayed à 10s : SHORT KO / MEDIUM OK)
+    ThrottledLoadTest                #   throttle 2G réel (Chrome only) → pageLoadTimeout borné
+    RobotMouseDemoTest               #   démo Robot (curseur OS réel) — bloc commenté, hors socle
   RawDomCapture{Producer,Verification}Test # capture DOM brut + masquage sur @Step (site réel)
   support/Fixtures.java              # résolution des fixtures en URL file://
 src/test/resources/
@@ -128,9 +134,18 @@ français, types `feat|fix|test|refactor|chore|docs|ci`. Scopes usuels ici : `bu
   `WebSync` avant navigation → `pageLoadTimeout` armé), T10 **reclassé** (scroll-into-view ; ajout de
   **T10bis**, preuve d'équivalence `WebSync.click` ≡ `Actions`), T16 (attend `AssertionError`), et **A9**
   (secret : plus aucune sortie du clair). Démo `RobotMouseDemoTest` (OS-level, commentée, hors socle).
-- **PHASE 2 migrée vers `WebSync`.** `LoginPage`/`CheckboxesPage` n'utilisent plus l'API Serenity native
-  (`WebElementFacade`) : interactions par `By` via `WebSync` (le principe « chaque PageObject détient un
-  `WebSync` » est désormais respecté). Le mot de passe transite en `Secret` jusqu'à `WebSync.type(By, Secret)`.
+- **PHASE 2 enrichie et basée sur `QaPageObject`.** `LoginPage`/`CheckboxesPage`/`DelayedButtonPage`
+  étendent `QaPageObject` du socle (champ `web` hérité + `web(SyncTimeout)` par profil) — plus d'API
+  Serenity native (`WebElementFacade`) ; le mot de passe transite en `Secret` jusqu'à
+  `WebSync.type(By, Secret)`. Deux validations réelles ajoutées : **`DynamicWaitTest`** (passage du profil
+  `SyncTimeout` : `#delayed` à 10 s, SHORT échoue / MEDIUM réussit, **cross-browser**) et
+  **`ThrottledLoadTest`** (throttle **2G réel** via CDP, **Chrome only** — s'ignore sur Firefox → un test
+  de moins).
+- **Conventions (tout le projet).** (1) Steps/PageObjects écrits « attendu passant » : aucune Step ne
+  renvoie/capture une exception pour signaler un échec, c'est le test (`assertThrows`) qui le vérifie.
+  (2) Logs uniformes — cas non passant : `RESULTAT : exception attendue=… | levee=OUI | type reel=… |
+  message="…" => cas non passant confirme` ; cas passant : `RESULTAT : … | aucune exception => cas passant
+  confirme`.
 - **Reste à faire** : re-passe **Firefox** de la PHASE 1 avec le socle corrigé (rafraîchir les timings du
   suivi), puis **PHASE 3** (parallélisme — un DOM par test KO, pas de fuite `ThreadLocal`).
 

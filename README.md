@@ -87,13 +87,57 @@ mvn test -Dtest='BornesLimitesTest#L5_medium_vraies_valeurs' \
 mvn test -Dtest='PageLoadEtConfigTest#T24_precedence_D' -Denvironment=override-D \
   -Dmaven.test.failure.ignore=true
 
-# Run 4 — PHASE 2 (site réel) : profils PAR DÉFAUT. NE PAS abaisser les timeouts ici
-#   (cf. note ci-dessous : sans effet sur ce test, et risque de flakiness réseau).
-mvn test -Dtest='AuthenticationTest' \
+# Run 4 — PHASE 2 (site réel, cross-browser) : AuthenticationTest (smoke) + DynamicWaitTest.
+#   DynamicWaitTest valide le PASSAGE du profil SyncTimeout : #delayed apparaît à 10s → SHORT (1s)
+#   échoue (SyncException), MEDIUM (15s) réussit. short=1s rend SHORT trop court ; le login
+#   (éléments déjà présents) n'en pâtit pas.
+mvn test -Dtest='AuthenticationTest,DynamicWaitTest' -Dqa.sync.timeout.short=1s \
+  -Dmaven.test.failure.ignore=true
+
+# Run 5 — PHASE 2 throttling 2G RÉEL (Chrome uniquement ; s'ignore sur Firefox via assumeTrue).
+#   Sous 2G, la navigation /login dépasse le pageLoadTimeout du socle → WebDriverException (bornée).
+mvn test -Dtest='ThrottledLoadTest' -Dqa.sync.pageLoadTimeout=2s \
   -Dmaven.test.failure.ignore=true
 ```
 
-Pour **Firefox** : ajouter `-Dwebdriver.driver=firefox` à **chacune** des 4 commandes.
+Pour **Firefox** : ajouter `-Dwebdriver.driver=firefox` à **chacune** des 5 commandes. Le Run 5
+(`ThrottledLoadTest`) donne alors **1 skip** (throttling CDP indisponible hors Chromium) → un test de
+moins sur Firefox, attendu.
+
+### Campagne complète : artefacts KO (tests `@Disabled`)
+
+Les producteurs d'échec **volontaire** (`@Disabled` par défaut) génèrent les dossiers
+`target/qa-results/KO__…`, ensuite relus par les vérificateurs. **Nettoyer `target/qa-results` d'abord**
+(des artefacts périmés fausseraient les vérificateurs). Ces cas échouent **à dessein** : `failure.ignore`
+sert justement à poursuivre la campagne.
+
+```bash
+rm -rf target/qa-results   # indispensable avant toute campagne producteur/vérificateur
+
+# Run 6 — RawDomCapture : 2 échecs volontaires (LOGIN + CHECKBOXES, en parallèle) → artefacts + dump DOM.
+mvn test -Dtest='RawDomCaptureProducerTest' \
+  -Djunit.jupiter.conditions.deactivate='*DisabledCondition' -Dmaven.test.failure.ignore=true
+# Run 7 — valide : DOM réel <html>, masquage password, un DOM par test (no-leak ThreadLocal). Doit être VERT.
+mvn test -Dtest='RawDomCaptureVerificationTest' \
+  -Djunit.jupiter.conditions.deactivate='*DisabledCondition'
+
+# Run 8 — Artefacts : échec volontaire HORS @Step → ERROR.log + FAIL.log (pas de {step}.html).
+#   long=3s évite d'attendre 60s (profil LONG par défaut) sur l'élément absent.
+mvn test -Dtest='ArtefactsProducerTest' -Dqa.sync.timeout.long=3s \
+  -Djunit.jupiter.conditions.deactivate='*DisabledCondition' -Dmaven.test.failure.ignore=true
+# Run 9 — ArtefactsVerification : ROUGE ATTENDU. L'échec du producteur étant hors @Step, il n'y a pas de
+#   {step}.html → le vérificateur échoue. T18-T20 sont validés EN VERT par RawDomCapture (Run 6/7).
+mvn test -Dtest='ArtefactsVerificationTest' \
+  -Djunit.jupiter.conditions.deactivate='*DisabledCondition' -Dmaven.test.failure.ignore=true
+
+# Run 10 — SoftAssert (T17) : soft-assert agrégé (soft=true) → échec EN FIN, produit son artefact KO__.
+mvn test -Dtest='SoftAssertTest' -Dqa.assertions.soft=true \
+  -Djunit.jupiter.conditions.deactivate='*DisabledCondition' -Dmaven.test.failure.ignore=true
+```
+
+> **Résultats attendus** de cette sous-campagne : Run 7 **vert** (4/4) ; Runs 6/8/10 **rouges volontaires**
+> (producteurs) ; Run 9 **rouge documenté** (écart `{step}.html` hors `@Step`). Les 5 dossiers `KO__`
+> produits sont la preuve visible de la capture d'échec du socle.
 
 ### La clé `environment` (ce que teste T24)
 
@@ -104,15 +148,20 @@ sur `serenity.conf`** — c'est un test de **précédence de configuration**, ri
 ça ne « remplace » qu'une **valeur** : les dossiers `KO__` seraient préfixés `override-D` au lieu de
 `qatest`. L'URL de base n'est pas affectée (héritée du bloc `environments.default`).
 
-### Pourquoi PHASE 2 n'a pas de `-D` de timeout
+### PHASE 2 : forcer un vrai timeout socle sur site réel
 
 Depuis la migration des PageObjects vers `WebSync` (cf. « Architecture »), la PHASE 2 **passe par le
-moteur de synchro du socle** : `qa.sync.*` la gouverne bien. Mais **abaisser ces clés ne suffit pas à
-provoquer une erreur** sur ce site : mesuré, même `qa.sync.*=1ms` laisse `AuthenticationTest` **vert**,
-car chaque interaction trouve sa cible **déjà présente** (la page est chargée avant que `WebSync` ne
-sonde) → le budget de timeout n'est jamais consommé. Forcer un timeout contre un site **très haute
-disponibilité** reste illusoire ; c'est précisément le rôle de la **PHASE 1** (fixtures à délais
-contrôlés) de valider les bornes du socle. On garde donc la PHASE 2 en profils **par défaut**.
+moteur de synchro du socle** (`qa.sync.*` la gouverne). Mais **abaisser les profils ne suffit pas** sur
+un site rapide : chaque interaction trouve sa cible **déjà présente** (page chargée avant le 1ᵉʳ sondage
+de `WebSync`), donc le budget de timeout n'est jamais consommé. Pour éprouver réellement les bornes
+contre le site dédié, il faut une **cible qui met du temps à apparaître** :
+
+- **`DynamicWaitTest`** (Run 4) injecte un bouton `#delayed` après **10 s** (JS, page réelle) :
+  `SHORT` (1 s) échoue → `SyncException`, `MEDIUM` (15 s) réussit → valide le passage du profil
+  `SyncTimeout`. **Cross-browser.**
+- **`ThrottledLoadTest`** (Run 5) applique un vrai **throttle 2G** (CDP) : la navigation `/login`
+  dépasse le `pageLoadTimeout` → `WebDriverException` (navigation bornée). **Chrome uniquement**
+  (throttling CDP indisponible sur Firefox → le test s'auto-ignore).
 
 ## Ce que démontre la suite
 
@@ -161,10 +210,26 @@ mvn test -Dtest='AuthenticationTest#invalid_login_is_captured_by_qa_socle' \
 
 ```
 src/test/java/org/automation/
-├── pages/LoginPage.java     # Page Object (interactions via WebSync du socle, locators By)
-├── steps/LoginSteps.java    # Steps @Step (orchestration ; le secret transite en Secret du socle)
-└── AuthenticationTest.java  # Tests JUnit 5 + SerenityJUnit5Extension
+├── pages/                        # PageObjects — étendent QaPageObject du socle (champ WebSync `web` hérité)
+│   ├── LoginPage.java            #   login réel ; type(By, Secret), click, waitUntilVisible
+│   ├── CheckboxesPage.java       #   2e page (spike DOM), marqueur #checkboxes
+│   └── DelayedButtonPage.java    #   injecte #delayed après un délai ; web(SyncTimeout) par profil
+├── steps/                        # Steps @Step (orchestration ; écrites « attendu passant »)
+│   ├── LoginSteps.java           #   le Secret transite jusqu'à WebSync.type (aucun clair)
+│   ├── CheckboxesSteps.java
+│   └── DelayedButtonSteps.java
+├── AuthenticationTest.java       # PHASE 2 smoke (login réel) + capture KO @Disabled
+├── DynamicWaitTest.java          # PHASE 2 : passage du profil SyncTimeout (SHORT échoue / MEDIUM réussit)
+├── ThrottledLoadTest.java        # PHASE 2 : throttle 2G réel (Chrome), pageLoadTimeout borné
+├── RobotMouseDemoTest.java       # démo java.awt.Robot (curseur OS) — bloc commenté, hors socle
+└── RawDomCapture{Producer,Verification}Test.java  # spike capture DOM brut (@Disabled)
 ```
+
+> **Convention de logs** (tous les tests) — pour un cas non passant :
+> `[TAG] RESULTAT : exception attendue=<Type> | levee=OUI | type reel=<classe> | message="…" => cas non passant confirme` ;
+> pour un cas passant : `[TAG] RESULTAT : <succès> en <ms> ms | aucune exception | <critère> => cas passant confirme`.
+> Les Steps sont écrites comme du code **attendu passant** ; c'est le test (`assertThrows`) qui vérifie
+> qu'un timeout trop court lève bien l'exception.
 
 > **Migration effectuée** : `WebSync` étant désormais implémenté côté socle, les PageObjects
 > (`LoginPage`, `CheckboxesPage`) ont été **migrés de l'API Serenity native (`WebElementFacade`) vers
