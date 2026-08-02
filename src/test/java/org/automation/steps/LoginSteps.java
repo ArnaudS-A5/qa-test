@@ -14,8 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code {1}} de l'annotation {@link Step} rend {@code secret.toString()}, donc la
  * description de step remontée à Serenity — et reprise telle quelle dans le
  * {@code FAIL.log} produit par le socle en cas d'échec — affiche la valeur
- * <b>masquée</b> (« prévention à la source » de D12), jamais le clair. La seule
- * déballe du clair est {@code secret.value()}, à l'unique point de saisie.
+ * <b>masquée</b> (« prévention à la source » de D12), jamais le clair. Depuis la
+ * migration vers {@code WebSync}, <b>aucune déballe du clair</b> n'a lieu dans ce projet :
+ * le {@link Secret} est transmis tel quel à {@code WebSync.type(By, Secret)}, qui gère le
+ * masquage à la saisie (socle).
  */
 public class LoginSteps {
 
@@ -28,7 +30,7 @@ public class LoginSteps {
 
     @Step("Se connecter en tant que {0} avec le secret {1}")
     public void loginAs(String username, Secret password) {
-        loginPage.enterCredentials(username, password.value());
+        loginPage.enterCredentials(username, password);
         loginPage.submit();
     }
 
