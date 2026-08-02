@@ -1,6 +1,5 @@
 package org.automation.phase1;
 
-import com.example.qa.api.exception.SyncException;
 import com.example.qa.api.secret.Secret;
 import com.example.qa.api.sync.SyncTimeout;
 import com.example.qa.api.sync.WebSync;
@@ -11,8 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static net.serenitybdd.core.Serenity.getDriver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,30 +50,41 @@ class FormEtSecretTest {
     }
 
     // ---- T22 : type(By, Secret) ----
+    // A9 (briefing) : le projet qui VALIDE le masquage ne doit pas l'ENFREINDRE.
+    // => aucune sortie du clair, secret jamais dans un message d'assertion, comparaison
+    //    sans restituer les operandes, valeur fictive dediee non journalisee.
     @Test
-    @DisplayName("T22 - type(By, Secret) : la saisie du password fonctionne")
+    @DisplayName("T22 - type(By, Secret) : saisie effective, sans jamais restituer le secret")
     void T22_type_secret() {
         WebSync web = openForm();
-        Secret secret = Secret.of("SuperSecretPassword!");
-        web.type(By.id("password"), secret);
-        // La value reelle est bien saisie (verifiable via getDomProperty("value")).
-        String value = web.getDomProperty(By.id("password"), "value");
-        System.out.println("[T22] password value (via DOM property) = " + value);
-        assertEquals("SuperSecretPassword!", value, "T22 : saisie du secret effective");
+        // Valeur fictive dediee, jamais journalisee ni affichee dans un message.
+        String expected = "Fixture-Secret-T22";
+        web.type(By.id("password"), Secret.of(expected));
+        // Comparaison booleenne : pas de println, pas de secret dans le message d'echec.
+        String actual = web.getDomProperty(By.id("password"), "value");
+        boolean saisieConforme = expected.equals(actual);
+        assertTrue(saisieConforme,
+                "T22 : saisie du secret effective (valeur volontairement non restituee)");
     }
 
-    // ---- T16 : should* dur (soft=false) : echoue a la 1re assertion ----
+    // ---- T16 : should* dur (soft=false) : leve AssertionError et stoppe la suite ----
+    // Correction (briefing) : le contrat (BF-SYNC-09 + soft-assert D22-bis) impose une
+    // AssertionError en mode dur ; le socle est CORRECT. On verifie : type d'erreur,
+    // message citant le locator, et NON-execution de l'instruction suivante.
     @Test
-    @DisplayName("T16 - should* dur (soft=false) : echec a la 1re assertion sur element absent")
+    @DisplayName("T16 - should* dur (soft=false) : leve AssertionError et stoppe la suite")
     void T16_should_dur() {
-        WebSync web = openForm();
-        // Element absent : shouldBeVisible doit lever (dur, soft=false par defaut).
-        SyncException ex = assertThrows(SyncException.class,
-                () -> new WebSync(SyncTimeout.SHORT).shouldBeVisible(By.id("missing")),
-                "T16 : should* dur doit lever immediatement (soft=false)");
-        System.out.println("[T16] " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("[ABSENT]") || ex.getMessage().contains("[HIDDEN]"),
-                "T16 : diagnostic attendu, msg=" + ex.getMessage());
+        openForm(); // charge form.html (#missing est volontairement absent)
+        AtomicBoolean apres = new AtomicBoolean(false);
+        AssertionError err = assertThrows(AssertionError.class, () -> {
+            new WebSync(SyncTimeout.SHORT).shouldBeVisible(By.id("missing"));
+            apres.set(true); // ne doit jamais etre atteint : l'assertion dure stoppe la suite
+        }, "T16 : should* dur (soft=false) doit lever AssertionError");
+        System.out.println("[T16] " + err.getMessage());
+        assertFalse(apres.get(),
+                "T16 : l'instruction apres un should* dur ne doit pas s'executer");
+        assertTrue(err.getMessage() != null && err.getMessage().contains("missing"),
+                "T16 : le message doit citer le locator (#missing), msg=" + err.getMessage());
     }
 }
 
