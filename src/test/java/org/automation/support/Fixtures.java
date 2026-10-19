@@ -9,7 +9,8 @@ import java.nio.file.Paths;
  * <p>Les fixtures vivent sous {@code src/test/resources/fixtures/} et sont donc copiées
  * au build dans le classpath de test ({@code target/test-classes/fixtures/}). On les
  * ouvre en {@code file://} via {@code getDriver().get(Fixtures.url("appear.html", "delay=2800"))},
- * sans aucun serveur.
+ * sans aucun serveur en local. En Grid, {@code -Dqa.fixtures.baseUrl=http://.../}
+ * permet de servir les mêmes fichiers aux navigateurs distants.
  */
 public final class Fixtures {
 
@@ -34,7 +35,10 @@ public final class Fixtures {
         String base;
         try {
             // Passe par un java.io.File pour un file:// canonique multi-plateforme.
-            base = Paths.get(resource.toURI()).toUri().toString();
+            String remoteBase = System.getProperty("qa.fixtures.baseUrl");
+            base = (remoteBase == null || remoteBase.isBlank())
+                    ? Paths.get(resource.toURI()).toUri().toString()
+                    : remoteBase.replaceAll("/+$", "") + "/" + name;
         } catch (Exception e) {
             throw new IllegalStateException("URL de fixture invalide pour : " + name, e);
         }

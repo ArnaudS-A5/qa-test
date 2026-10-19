@@ -1,0 +1,76 @@
+diff --git a/pom.xml b/pom.xml
+index 1a84edf..0788d84 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -36,6 +36,21 @@
+     <artifactId>qa-test</artifactId>
+     <version>1.0-SNAPSHOT</version>
+ 
++    <repositories>
++        <repository>
++            <id>artifactory-snapshots</id>
++            <url>http://artifactory.home.arpa:8082/artifactory/libs-snapshot-local</url>
++            <releases><enabled>false</enabled></releases>
++            <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
++        </repository>
++        <repository>
++            <id>artifactory-releases</id>
++            <url>http://artifactory.home.arpa:8082/artifactory/libs-release-local</url>
++            <releases><enabled>true</enabled></releases>
++            <snapshots><enabled>false</enabled></snapshots>
++        </repository>
++    </repositories>
++
+     <dependencies>
+         <!--
+           Unique dépendance du projet : le socle QA. Sa version suit celle du parent.
+@@ -57,6 +72,16 @@
+ 
+     <build>
+         <plugins>
++            <plugin>
++                <groupId>org.apache.maven.plugins</groupId>
++                <artifactId>maven-jar-plugin</artifactId>
++                <executions>
++                    <execution>
++                        <id>publish-test-harness</id>
++                        <goals><goal>test-jar</goal></goals>
++                    </execution>
++                </executions>
++            </plugin>
+             <!-- Exécution des tests (versions/config héritées de qa-parent). -->
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+@@ -79,4 +104,4 @@
+         </plugins>
+     </build>
+ 
+-</project>
+\ No newline at end of file
++</project>
+diff --git a/src/test/java/org/automation/support/Fixtures.java b/src/test/java/org/automation/support/Fixtures.java
+index 7725a59..e58f0e9 100644
+--- a/src/test/java/org/automation/support/Fixtures.java
++++ b/src/test/java/org/automation/support/Fixtures.java
+@@ -9,7 +9,8 @@ import java.nio.file.Paths;
+  * <p>Les fixtures vivent sous {@code src/test/resources/fixtures/} et sont donc copiées
+  * au build dans le classpath de test ({@code target/test-classes/fixtures/}). On les
+  * ouvre en {@code file://} via {@code getDriver().get(Fixtures.url("appear.html", "delay=2800"))},
+- * sans aucun serveur.
++ * sans aucun serveur en local. En Grid, {@code -Dqa.fixtures.baseUrl=http://.../}
++ * permet de servir les mêmes fichiers aux navigateurs distants.
+  */
+ public final class Fixtures {
+ 
+@@ -34,7 +35,10 @@ public final class Fixtures {
+         String base;
+         try {
+             // Passe par un java.io.File pour un file:// canonique multi-plateforme.
+-            base = Paths.get(resource.toURI()).toUri().toString();
++            String remoteBase = System.getProperty("qa.fixtures.baseUrl");
++            base = (remoteBase == null || remoteBase.isBlank())
++                    ? Paths.get(resource.toURI()).toUri().toString()
++                    : remoteBase.replaceAll("/+$", "") + "/" + name;
+         } catch (Exception e) {
+             throw new IllegalStateException("URL de fixture invalide pour : " + name, e);
+         }
