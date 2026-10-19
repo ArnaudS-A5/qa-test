@@ -71,6 +71,7 @@ def maven(project, *args, scan=False):
         command = [str(TEMPLATE / "mvnw"), "-B", "-ntp", "-s", str(settings),
                    "-f", str(project / "pom.xml"), "-Pci",
                    "-Dmaven.repo.local=" + str(WORK / ".m2"),
+                   "-Dserenity.browser.width=1920", "-Dserenity.browser.height=1080",
                    "-Dqa.coverage.dataFile=" + str(COVERAGE), *args]
         env = os.environ.copy()
         if scan:
