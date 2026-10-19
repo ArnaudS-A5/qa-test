@@ -36,6 +36,12 @@
     <artifactId>qa-test</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <properties>
+        <!-- Un test en échec ne stoppe pas la campagne : toutes les exécutions Surefire tournent et
+             l'on obtient 100 % des résultats. Surchargeable : -Dmaven.test.failure.ignore=false. -->
+        <maven.test.failure.ignore>true</maven.test.failure.ignore>
+    </properties>
+
     <dependencies>
         <!--
           Unique dépendance du projet : le socle QA. Sa version suit celle du parent.
@@ -57,10 +63,14 @@
 
     <build>
         <plugins>
-            <!-- Exécution des tests (versions/config héritées de qa-parent). -->
+            <!-- Exécution des tests (versions/config héritées de qa-parent). Configuration commune à
+                 TOUTES les exécutions (default-test et celles du profil campagne). -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <testFailureIgnore>${maven.test.failure.ignore}</testFailureIgnore>
+                </configuration>
             </plugin>
 
             <!-- Agrégation du rapport Serenity : `mvn serenity:aggregate`
