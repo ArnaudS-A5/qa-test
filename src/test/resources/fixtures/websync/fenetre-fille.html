@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>fenetre-fille</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 16px; color: #1a1a1a; background: #fef9c3; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    .qa-val { font-weight: 700; color: #15803d; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture focus fenêtre, côté FILLE (T75) : ouverte par fenetre-mere.html (#ouvrir-fille).
+    Même publication d'état que la mère : #a-le-focus, #nb-focus, #nb-blur, #nb-appels (espion window.focus).
+  -->
+  <h1>fenêtre fille</h1>
+  <p>Fenêtre : <span class="qa-val" id="nom-fenetre">fille</span></p>
+  <p>A le focus : <span class="qa-val" id="a-le-focus">?</span>
+    · focus reçus : <span class="qa-val" id="nb-focus">0</span>
+    · blur reçus : <span class="qa-val" id="nb-blur">0</span>
+    · appels à window.focus() : <span class="qa-val" id="nb-appels">0</span></p>
+  <script>
+    (function () {
+      var compteurs = { focus: 0, blur: 0, appels: 0 };
+      var ecrire = function (id, valeur) { document.getElementById(id).textContent = String(valeur); };
+      var natif = window.focus.bind(window);
+      window.focus = function () { compteurs.appels++; ecrire('nb-appels', compteurs.appels); natif(); };
+      window.addEventListener('focus', function () { compteurs.focus++; ecrire('nb-focus', compteurs.focus); ecrire('a-le-focus', 'oui'); });
+      window.addEventListener('blur', function () { compteurs.blur++; ecrire('nb-blur', compteurs.blur); ecrire('a-le-focus', 'non'); });
+      ecrire('a-le-focus', document.hasFocus() ? 'oui' : 'non');
+    })();
+  </script>
+</body>
+</html>
