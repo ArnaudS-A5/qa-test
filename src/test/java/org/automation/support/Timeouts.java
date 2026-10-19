@@ -30,6 +30,10 @@ public final class Timeouts {
 
     static final String PAGE_LOAD_TIMEOUT_KEY = "qa.sync.pageLoadTimeout";
     static final String IMPLICIT_WAIT_KEY = "webdriver.timeouts.implicitlywait";
+    static final String POLLING_INTERVAL_KEY = "qa.sync.pollingInterval";
+
+    /** Défaut du socle pour {@code qa.sync.pollingInterval} ({@code AbstractSyncManager.POLLING_INTERVAL_DEFAULT}). */
+    public static final Duration POLLING_INTERVAL_DEFAUT = Duration.ofMillis(250);
 
     private Timeouts() {
     }
@@ -75,6 +79,24 @@ public final class Timeouts {
         return config(PAGE_LOAD_TIMEOUT_KEY).map(Timeouts::parseDuration).orElseThrow(() ->
                 new IllegalStateException("Cle " + PAGE_LOAD_TIMEOUT_KEY + " absente : ce test appartient au"
                         + " groupe 'cle' (package sync.cle) et tourne via `mvn verify` (execution cle du pom)."));
+    }
+
+    /**
+     * Intervalle de sondage {@code qa.sync.pollingInterval} (groupe {@code polling}).
+     *
+     * @throws IllegalStateException si la clé est absente, ou égale au défaut du socle (250 ms : le test ne
+     *                               prouverait pas que la clé est lue)
+     */
+    public static Duration pollingInterval() {
+        Duration value = config(POLLING_INTERVAL_KEY).map(Timeouts::parseDuration).orElseThrow(() ->
+                new IllegalStateException("Cle " + POLLING_INTERVAL_KEY + " absente : ce test appartient au groupe"
+                        + " 'polling' (package sync.polling) et tourne via `mvn verify` (execution polling du pom),"
+                        + " ou avec -D" + POLLING_INTERVAL_KEY + "=<duree>."));
+        if (value.equals(POLLING_INTERVAL_DEFAUT)) {
+            throw new IllegalStateException("Cle " + POLLING_INTERVAL_KEY + "=" + value.toMillis() + " ms egale au"
+                    + " defaut du socle : le test ne prouverait pas que la cle est lue.");
+        }
+        return value;
     }
 
     /** Implicit wait natif de {@code serenity.conf} ({@code webdriver.timeouts.implicitlywait}, en ms). */

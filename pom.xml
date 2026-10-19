@@ -100,8 +100,9 @@
           (ses JVM + ses propriétés), sélectionnée par PACKAGE :
             - org/automation/sync/cle/**        → exécution « cle »        : clés posées ci-dessous ;
             - org/automation/sync/precedence/** → exécution « precedence » : environment surchargé (T24) ;
+            - org/automation/sync/polling/**    → exécution « polling »    : intervalle de sondage surchargé (T78) ;
             - tout le reste                     → exécution « defaut »     : AUCUNE clé (défauts du socle).
-          « defaut » ramasse tout ce qui n'est pas dans les deux autres : un nouveau test n'est jamais oublié.
+          « defaut » ramasse tout ce qui n'est pas dans les autres : un nouveau test n'est jamais oublié.
           Les tests aux limites LISENT ces valeurs (support/Timeouts) pour en déduire leurs délais
           (cible à timeout ± 5 s) : les valeurs ne sont écrites qu'ici.
 
@@ -128,7 +129,7 @@
                             <forkCount>15</forkCount>
                         </configuration>
                         <executions>
-                            <!-- Remplacée par les 3 exécutions ci-dessous (qui couvrent tous les tests). -->
+                            <!-- Remplacée par les 4 exécutions ci-dessous (qui couvrent tous les tests). -->
                             <execution>
                                 <id>default-test</id>
                                 <configuration>
@@ -147,6 +148,7 @@
                                         <exclude>**/*$*</exclude>
                                         <exclude>org/automation/sync/cle/**</exclude>
                                         <exclude>org/automation/sync/precedence/**</exclude>
+                                        <exclude>org/automation/sync/polling/**</exclude>
                                     </excludes>
                                 </configuration>
                             </execution>
@@ -183,6 +185,23 @@
                                     </includes>
                                     <systemPropertyVariables>
                                         <environment>override-D</environment>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+
+                            <!-- Groupe « polling » : T78, intervalle de sondage du socle. Isolé pour que les tests
+                                 aux limites des autres groupes gardent le sondage par défaut (250 ms) ; la valeur
+                                 DIFFÈRE du défaut, sinon rien ne prouverait qu'elle est lue. -->
+                            <execution>
+                                <id>polling</id>
+                                <phase>test</phase>
+                                <goals><goal>test</goal></goals>
+                                <configuration>
+                                    <includes>
+                                        <include>org/automation/sync/polling/**/*Test.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <qa.sync.pollingInterval>2000ms</qa.sync.pollingInterval>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
