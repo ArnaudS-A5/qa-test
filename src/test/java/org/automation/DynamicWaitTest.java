@@ -18,10 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Un bouton {@code #delayed} est injecté dans une page réelle après <b>10 s</b> :
  * <ul>
- *   <li><b>SHORT</b> (abaissé à 1 s) → l'attente EXPIRE avant l'arrivée → {@code SyncException} (cas non passant) ;</li>
+ *   <li><b>SHORT</b> (5 s) → l'attente EXPIRE avant l'arrivée → {@code SyncException} (cas non passant) ;</li>
  *   <li><b>MEDIUM</b> (15 s) → l'attente ABOUTIT (10 s &lt; 15 s) → bouton trouvé (cas passant).</li>
  * </ul>
- * Cross-browser (aucun throttling). À lancer avec {@code -Dqa.sync.timeout.short=1s}.
+ * Profils aux défauts du socle (groupe {@code defaut}, aucune clé) : la cible arrive exactement 5 s après
+ * SHORT et 5 s avant MEDIUM, soit la règle aux limites ± 5 s. Cross-browser (aucun throttling).
  */
 @ExtendWith(SerenityJUnit5Extension.class)
 class DynamicWaitTest {
@@ -32,15 +33,15 @@ class DynamicWaitTest {
     DelayedButtonSteps delayed;
 
     @Test
-    @DisplayName("SyncTimeout SHORT (1s) : #delayed a 10s => SyncException (cas non passant)")
+    @DisplayName("SyncTimeout SHORT (5s) : #delayed a 10s => SyncException (cas non passant)")
     void short_profile_times_out_before_delayed_element() {
         delayed.openAndScheduleDelayedButton(DELAY_SECONDS);
         System.out.println("=== [SyncTimeout/SHORT] CAS NON PASSANT : #delayed arrive a "
-                + DELAY_SECONDS + "s, budget SHORT=1s -> exception attendue ===");
+                + DELAY_SECONDS + "s, budget SHORT=5s -> exception attendue ===");
 
         SyncException ex = assertThrows(SyncException.class,
                 () -> delayed.waitForDelayedButton(SyncTimeout.SHORT),
-                "SHORT (1s) doit lever une SyncException avant l'arrivee de #delayed (" + DELAY_SECONDS + "s)");
+                "SHORT (5s) doit lever une SyncException avant l'arrivee de #delayed (" + DELAY_SECONDS + "s)");
 
         System.out.println("[SyncTimeout/SHORT] RESULTAT : exception attendue=SyncException"
                 + " | levee=OUI | type reel=" + ex.getClass().getName()
