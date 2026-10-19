@@ -59,7 +59,7 @@ n'est pas explicitement activé. Le Maven Deploy Plugin choisit le dépôt corre
 
 Credentials Jenkins nécessaires :
 
-- `sonarqube-ci` : secret text, token d'analyse autorisant les deux projets ;
+- `sonarqube-ci` : secret text, token autorisant l'analyse et la lecture des gates des deux projets ;
 - `artifactory-ci` : username/password, utilisateur Artifactory et token comme password.
 
 Le `settings.xml` Maven est temporaire, hors des sources et des artefacts archivés,

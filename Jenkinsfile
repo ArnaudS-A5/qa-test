@@ -94,7 +94,9 @@ PY'''
         }
         stage('Quality Gates : couverture globale ≥ 80 %') {
             steps {
-                sh 'python3 ci/pipeline.py gates'
+                withCredentials([string(credentialsId: 'sonarqube-ci', variable: 'SONAR_TOKEN')]) {
+                    sh 'python3 ci/pipeline.py gates'
+                }
             }
         }
         stage('Publication Artifactory') {

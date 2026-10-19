@@ -180,7 +180,8 @@ def analyse(name):
 
 def api(path, **params):
     url = SONAR + path + "?" + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(url, timeout=30) as response:
+    request = urllib.request.Request(url, headers={"Authorization": "Bearer " + os.environ["SONAR_TOKEN"]})
+    with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)
 
 
