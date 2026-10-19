@@ -41,3 +41,9 @@ build/
 ### IDE / outils locaux (jamais versionnés) ###
 .idea/
 .claude/
+
+### Logs de campagne (suivis en direct : tail -F logs/*.log) ###
+logs/
+
+### Résultats conservés par navigateur (campagne Chrome puis Firefox, cf. README) ###
+target-*/
