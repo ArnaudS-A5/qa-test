@@ -101,6 +101,8 @@
             - org/automation/sync/cle/**        → exécution « cle »        : clés posées ci-dessous ;
             - org/automation/sync/precedence/** → exécution « precedence » : environment surchargé (T24) ;
             - org/automation/sync/polling/**    → exécution « polling »    : intervalle de sondage surchargé (T78) ;
+            - org/automation/websync/etat/soft/** → exécution « soft »     : assertions souples activées, SHORT à
+                                                  1 s (T82, @Disabled : lancé à la main par cette exécution) ;
             - tout le reste                     → exécution « defaut »     : AUCUNE clé (défauts du socle).
           « defaut » ramasse tout ce qui n'est pas dans les autres : un nouveau test n'est jamais oublié.
           Les tests aux limites LISENT ces valeurs (support/Timeouts) pour en déduire leurs délais
@@ -110,8 +112,8 @@
           Les exécutions, elles, s'enchaînent (Maven ne les parallélise pas).
 
           Actif sauf si -Dtest=... est passé : `mvn test -Dtest=X` garde son comportement habituel (sans
-          clé ; un test du groupe cle le signale alors explicitement). Hors campagne : les producteurs
-          d'échec volontaire @Disabled.
+          clé ; un test du groupe cle le signale alors explicitement). Hors campagne : les tests @Disabled
+          (producteurs d'échec volontaire, T17 et T82 soft-assert), lancés à la main (README « Lancer les tests »).
         -->
         <profile>
             <id>campagne</id>
@@ -129,7 +131,7 @@
                             <forkCount>15</forkCount>
                         </configuration>
                         <executions>
-                            <!-- Remplacée par les 4 exécutions ci-dessous (qui couvrent tous les tests). -->
+                            <!-- Remplacée par les 5 exécutions ci-dessous (qui couvrent tous les tests). -->
                             <execution>
                                 <id>default-test</id>
                                 <configuration>
@@ -149,6 +151,7 @@
                                         <exclude>org/automation/sync/cle/**</exclude>
                                         <exclude>org/automation/sync/precedence/**</exclude>
                                         <exclude>org/automation/sync/polling/**</exclude>
+                                        <exclude>org/automation/websync/etat/soft/**</exclude>
                                     </excludes>
                                 </configuration>
                             </execution>
@@ -202,6 +205,27 @@
                                     </includes>
                                     <systemPropertyVariables>
                                         <qa.sync.pollingInterval>2000ms</qa.sync.pollingInterval>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+
+                            <!-- Groupe « soft » : T82, assertions souples (should* collectés, KO agrégé en fin de
+                                 test). Isolé : partout ailleurs les should* restent durs (serenity.conf).
+                                 T82 est rouge à dessein, donc @Disabled : lancé à la main par cette exécution
+                                 (README, « Lancer les tests » §6).
+                                 SHORT à 1 s : un should* en échec attend le timeout du profil avant d'être
+                                 collecté ; sur une page statique, attendre davantage n'apporte rien. -->
+                            <execution>
+                                <id>soft</id>
+                                <phase>test</phase>
+                                <goals><goal>test</goal></goals>
+                                <configuration>
+                                    <includes>
+                                        <include>org/automation/websync/etat/soft/**/*Test.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <qa.assertions.soft>true</qa.assertions.soft>
+                                        <qa.sync.timeout.short>1s</qa.sync.timeout.short>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
