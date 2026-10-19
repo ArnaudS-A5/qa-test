@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>saisie</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    label { display: inline-block; margin: 4px 0; }
+    .qa-val { font-weight: 700; color: #15803d; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture saisie clavier (T25, T26) : websync/action/FormulaireClavierTest.
+    Ordre de tabulation : #nom -> #prenom -> #ville -> #envoyer (aucun autre élément focusable entre eux).
+    Chaque soumission (Entrée, bouton ou submit()) écrit "nom|prenom|ville" dans #recap et incrémente
+    #nb-submit. La soumission est interceptée (return false) : la page ne se recharge jamais.
+  -->
+  <h1>saisie — clavier & soumission</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Formulaire à trois champs pour les <b>actions clavier</b> : <code>typeAndTab</code>, <code>typeAndEnter</code>, <code>clear</code>, <code>submit</code>.</p>
+    <p class="qa-expect">
+      Champs : <code>#nom</code> (prérempli « ancien ») · <code>#prenom</code> · <code>#ville</code> · <code>#envoyer</code>.
+      <br>Résultat de chaque soumission : <code>#recap</code> = nom|prenom|ville · <code>#nb-submit</code> = nombre de soumissions.
+    </p>
+  </div>
+  <form id="formulaire" onsubmit="return soumettre();">
+    <label>Nom : <input id="nom" type="text" value="ancien"></label>
+    <br>
+    <label>Prénom : <input id="prenom" type="text"></label>
+    <br>
+    <label>Ville : <input id="ville" type="text"></label>
+    <br>
+    <button id="envoyer" type="submit">Envoyer</button>
+  </form>
+  <p>Récapitulatif : <span class="qa-val" id="recap">aucune soumission</span></p>
+  <p>Soumissions : <span class="qa-val" id="nb-submit">0</span></p>
+  <script>
+    var soumissions = 0;
+    function soumettre() {
+      var valeur = function (id) { return document.getElementById(id).value; };
+      soumissions++;
+      document.getElementById('recap').textContent = valeur('nom') + '|' + valeur('prenom') + '|' + valeur('ville');
+      document.getElementById('nb-submit').textContent = String(soumissions);
+      return false;
+    }
+  </script>
+</body>
+</html>
