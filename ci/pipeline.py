@@ -144,9 +144,11 @@ def grid():
             save_tests(TESTS, label)
             if code:
                 failures.append(label)
+        # Keep a browsable Serenity report and the test harness even on a red campaign.
+        if maven(TESTS, "-DskipTests", "package", "serenity:aggregate"):
+            failures.append("packaging/reporting")
         if failures:
             raise SystemExit("Failed test runs: " + ", ".join(failures))
-        require_success(maven(TESTS, "-DskipTests", "package", "serenity:aggregate"))
     finally:
         server.shutdown()
         server.server_close()
