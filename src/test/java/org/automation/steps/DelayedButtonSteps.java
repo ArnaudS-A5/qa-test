@@ -1,6 +1,6 @@
 package org.automation.steps;
 
-import com.example.qa.api.sync.SyncTimeout;
+import com.example.qa.sync.SyncTimeout;
 import net.serenitybdd.annotations.Step;
 import org.automation.pages.DelayedButtonPage;
 

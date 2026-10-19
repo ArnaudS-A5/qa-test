@@ -1,6 +1,6 @@
 package org.automation.steps;
 
-import com.example.qa.api.secret.Secret;
+import com.example.qa.secret.Secret;
 import net.serenitybdd.annotations.Step;
 import org.automation.pages.LoginPage;
 
@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Steps métier de connexion (couche d'orchestration du Page Object Model).
  *
  * <p><b>Consommation du socle</b> : le mot de passe transite en {@link Secret} (API
- * {@code com.example.qa.api.secret}, fournie par {@code qa-socle}). Le placeholder
+ * {@code com.example.qa.secret}, fournie par {@code qa-socle}). Le placeholder
  * {@code {1}} de l'annotation {@link Step} rend {@code secret.toString()}, donc la
  * description de step remontée à Serenity — et reprise telle quelle dans le
  * {@code FAIL.log} produit par le socle en cas d'échec — affiche la valeur

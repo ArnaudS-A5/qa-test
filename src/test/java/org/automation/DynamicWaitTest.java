@@ -1,7 +1,7 @@
 package org.automation;
 
-import com.example.qa.api.exception.SyncException;
-import com.example.qa.api.sync.SyncTimeout;
+import com.example.qa.sync.SyncException;
+import com.example.qa.sync.SyncTimeout;
 import net.serenitybdd.annotations.Steps;
 import net.serenitybdd.junit5.SerenityJUnit5Extension;
 import org.automation.steps.DelayedButtonSteps;

@@ -1,6 +1,6 @@
 package org.automation;
 
-import com.example.qa.api.sync.WebSync;
+import com.example.qa.sync.WebSync;
 import net.serenitybdd.junit5.SerenityJUnit5Extension;
 import net.thucydides.core.webdriver.WebDriverFacade;
 import org.junit.jupiter.api.DisplayName;

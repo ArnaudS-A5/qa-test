@@ -1,9 +1,9 @@
 package org.automation.pages;
 
-import com.example.qa.api.secret.Secret;
-import com.example.qa.api.sync.WebSync;
+import com.example.qa.secret.Secret;
+import com.example.qa.sync.WebSync;
 import net.serenitybdd.annotations.DefaultUrl;
-import com.example.qa.api.page.QaPageObject;
+import com.example.qa.page.QaPageObject;
 import net.serenitybdd.core.pages.PageObject;
 import org.openqa.selenium.By;
 

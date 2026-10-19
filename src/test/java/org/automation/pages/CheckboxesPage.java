@@ -1,6 +1,6 @@
 package org.automation.pages;
 
-import com.example.qa.api.page.QaPageObject;
+import com.example.qa.page.QaPageObject;
 import net.serenitybdd.annotations.DefaultUrl;
 import org.openqa.selenium.By;
 

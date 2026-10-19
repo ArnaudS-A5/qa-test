@@ -1,6 +1,6 @@
 package org.automation;
 
-import com.example.qa.api.secret.Secret;
+import com.example.qa.secret.Secret;
 import net.serenitybdd.annotations.Steps;
 import net.serenitybdd.junit5.SerenityJUnit5Extension;
 import org.automation.steps.LoginSteps;

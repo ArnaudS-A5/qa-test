@@ -1,7 +1,7 @@
 package org.automation.pages;
 
-import com.example.qa.api.page.QaPageObject;
-import com.example.qa.api.sync.SyncTimeout;
+import com.example.qa.page.QaPageObject;
+import com.example.qa.sync.SyncTimeout;
 import net.serenitybdd.annotations.DefaultUrl;
 import org.openqa.selenium.By;
 
