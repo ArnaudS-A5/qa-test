@@ -169,6 +169,7 @@ def analyse(name):
     project = TEMPLATE if name == "template" else TESTS
     args = ["org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar",
             "-Dsonar.host.url=" + SONAR, "-Dsonar.projectKey=" + KEYS[name],
+            "-Dsonar.projectName=" + project.name,
             "-Dsonar.scanner.skipJreProvisioning=true"]
     if name == "template":
         args += ["-Dsonar.coverage.jacoco.xmlReportPaths=" +

@@ -54,6 +54,14 @@ pipeline {
                 }
                 sh 'java -version && javac -version && python3 --version'
                 sh 'curl --fail --silent --show-error "$GRID_URL/status" > grid-status.json'
+                sh '''python3 - <<'PY'
+import json
+with open('grid-status.json') as f:
+    status = json.load(f)['value']
+if not status.get('ready'):
+    raise SystemExit('Selenium Grid is not ready')
+print('Selenium Grid ready:', len(status.get('nodes', [])), 'nodes')
+PY'''
             }
         }
         stage('Build et tests unitaires du socle') {
