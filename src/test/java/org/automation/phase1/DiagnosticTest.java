@@ -33,7 +33,7 @@ class DiagnosticTest {
 
     private WebSync openAndSync(String fixture) {
         getDriver().get(Fixtures.url(fixture, null));
-        return new WebSync(SyncTimeout.SHORT); // profil court (abaisse via -D) => timeout rapide
+        return new WebSync(SyncTimeout.SHORT); // profil le plus court (defaut 5s) => timeout rapide
     }
 
     // Pause d'observation d'~1 s via un mecanisme d'attente INTEGRE (WebDriverWait), SANS Thread.sleep :
@@ -116,7 +116,10 @@ class DiagnosticTest {
     // Mesure : Actions.moveToElement().click() produit EXACTEMENT la meme trace pointeur
     // (mouseover -> mousemove -> mousedown -> mouseup -> click, tous 'trusted') que le
     // WebSync.click de T10. Le socle clique donc deja via le chemin pointeur W3C (et non un
-    // element.click() JS). OUT_OF_BOUNDS n'est jamais leve (scroll-into-view automatique).
+    // element.click() JS).
+    // Difference : Actions ne fait PAS de scroll-into-view (W3C : un pointerMove ne defile pas ;
+    // Firefox l'applique strictement -> MoveTargetOutOfBounds hors viewport). On defile donc
+    // explicitement (scrollToElement) avant de comparer ; seul WebSync.click defile de lui-meme (T10).
     // NB : aucun deplacement du curseur OS (evenements synthetises) -> cf. RobotMouseDemoTest.
     @Test
     @DisplayName("T10bis - equivalence : Actions.moveToElement produit la meme trace pointeur que WebSync.click")
@@ -126,15 +129,17 @@ class DiagnosticTest {
         web.type(By.id("field"), "hello");
         assertEquals("hello", web.getValue(By.id("field")), "T10bis : saisie effective");
 
-        // Clic bas-niveau via Actions, ecrit comme attendu PASSANT (scroll-into-view auto).
-        // Si MoveTargetOutOfBoundsException survenait, le test remonterait l'erreur (finding).
+        // Clic bas-niveau via Actions, apres un defilement EXPLICITE (Actions ne defile pas seul).
+        // Cible CENTREE : Actions.scrollToElement ne defile pas une cible deja partiellement visible
+        // (Firefox), alors que moveToElement vise son centre, reste hors viewport.
         WebElement target = getDriver().findElement(TARGET);
+        ((JavascriptExecutor) getDriver()).executeScript("arguments[0].scrollIntoView({block: 'center'});", target);
         new Actions(getDriver()).moveToElement(target).click().perform();
         boolean clicked = web.containsText(By.id("status"), "clicked");
         // Trace pointeur : doit etre identique a celle de T10 (meme sequence 'trusted').
         String pointerLog = (String) ((JavascriptExecutor) getDriver())
                 .executeScript("return window.__pointerLog;");
-        assertTrue(clicked, "T10bis : le clic Actions doit aboutir (scroll auto), sans OUT_OF_BOUNDS");
+        assertTrue(clicked, "T10bis : le clic Actions doit aboutir (apres scroll explicite), sans OUT_OF_BOUNDS");
         System.out.println("[T10bis] RESULTAT : clic Actions abouti | aucune exception (pas d'OUT_OF_BOUNDS)"
                 + " | pointerLog=" + pointerLog + " => cas passant confirme (equivalence avec T10)");
 
