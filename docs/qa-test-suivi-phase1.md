@@ -4,6 +4,101 @@
 > Source : `docs/qa-test-prompt.md`, chapitre 3 (PHASE 1). Objectif : **aucun trou dans la raquette** —
 > chaque test du document figure ici avec son statut. Un test non exécuté ou en échec est **notifié**.
 
+## ⏱️ Mise à jour 2026-10-19 — surface `WebSync` complète, étapes `@Step`, soft-assert visible
+
+> Cette section **prime** sur tout ce qui suit (sections antérieures conservées comme trace).
+
+**Ce qui a changé depuis le 2026-10-18 (matin) :**
+- **Surface de l'API `WebSync` couverte** : T25 à T82 dans `org.automation.websync` (un sous-package par
+  domaine : `action`, `within`, `select`, `lecture`, `etat`, `etat/soft`, `attente`, `exception`), T77 et T78
+  dans `sync/`, sur des fixtures dédiées (`fixtures/websync/`). Couverture fonctionnelle **100 % (78/78)**
+  méthodes publiques de synchro, contre 20 % (16/78). Détail des tests : `qa-test-prompt.md` §3.
+- **Cinq groupes** dans le profil `campagne` : `defaut`, `cle`, `precedence`, plus `polling`
+  (`pollingInterval=2000ms`, T78) et `soft` (`qa.assertions.soft=true`, SHORT 1 s, T82) ; `forkCount` 15.
+- **Étapes `@Step`** dans les tests `websync/` (hors appels chronométrés et appels dont on attend l'échec),
+  capture après chaque étape (`AFTER_EACH_STEP`).
+- **Socle corrigé** sur les trois écarts révélés : T43 (§5, `8736508`), T76 (§6, `1dda2d7`), soft-assert (§7,
+  `81f66d5` et `da57c34`). Voir `qa-socle-suggestions.md`, en-tête « État ».
+- **T82 refondu** : rouge à dessein, `@Disabled`, lancé à la main (README « Lancer les tests » §6) ; 16
+  `should*` (13 KO, 3 OK) sur `soft.html`, en bloc hors étape puis en étapes.
+
+**Résultat de la dernière campagne complète (2026-10-18 vers 23 h 50, Java 17, socle corrigé)** :
+
+| Navigateur | Tests | OK | KO | Ignorés | Durée |
+|---|---|---|---|---|---|
+| Chrome | 104 | 93 | 1 : l'**ancien** T82 | 10 | 4 min 47 |
+| Firefox | 104 | 92 | 1 : l'**ancien** T82 | 11 (dont `ThrottledLoadTest`, attendu) | 4 min 41 |
+
+L'ancien T82 vérifiait le vote de fin en l'appelant lui-même dans un `assertThrows` ; depuis la correction §7,
+ce vote déclare aussi le test en échec à Serenity, d'où le KO. Il a été refondu (ci-dessous). Campagne
+complète **non relancée** depuis la refonte.
+
+**T82 refondu (2026-10-19, lancé seul par l'exécution `soft`)** :
+
+| Partie | Attendu | Chrome | Firefox |
+|---|---|---|---|
+| Bloc (hors étape) | un agrégat, 13 échecs dans l'ordre, 3 OK exclus, collecteur purgé | ✅ | ✅ |
+| Étapes | 13 rouges, 3 vertes (n° 8, 14, 16), aucune sautée | ✅ | ✅ |
+| Artefacts `KO__` | `ERROR.log`, `FAIL.log`, 13 `{step}.html` | ✅ | ✅ |
+| Fin | test FAILED (vote de fin de JUnit) | ✅ 36,6 s | ✅ 29,3 s |
+
+Premier essai : les 13 étapes KO étaient **vertes**. Cause : l'`assertThrows(AssertionError.class, …)` du bloc,
+qui fait repeindre par Serenity, en fin de test, les étapes en échec par ce type. Remplacé par un `try/catch`.
+
+**Reste à faire** : relancer la campagne complète ; convention de nommage (proposition à valider) ;
+producteurs d'artefacts en prérequis ; §4 (socle) ; PHASE 2 (S1 à S4) ; PHASE 3 (parallélisme).
+
+## ⏱️ Mise à jour 2026-10-18 — socle package-by-feature, campagne unique, bornes ± 5 s, Chrome + Firefox verts
+
+> Section antérieure, conservée comme trace (elle primait sur les sections 2026-08-02 et 2026-07-15).
+
+**Ce qui a changé :**
+- **Socle** consommé depuis `qa-template` branche `feature/package-by-feature` : imports migrés
+  (`api.sync` → `sync`, `api.secret` → `secret`, `api.page` → `page`, `api.exception.SyncException` →
+  `sync.SyncException`). Aucune modification de comportement.
+- **Campagne en une commande par navigateur** (`mvn clean verify [-Dwebdriver.driver=firefox]`) : profil
+  Maven `campagne`, trois exécutions Surefire sélectionnées par package — `defaut` (aucune clé), `cle`
+  (`short=10s`, `medium=25s`, `long=30s`, `extraLong=40s`, `pageLoadTimeout=10s`), `precedence`
+  (`environment=override-D`) — 10 JVM en parallèle par exécution ; un échec ne stoppe plus la campagne.
+- **Tests aux limites réécrits** selon la règle **± 5 s** (2 s pour SHORT par défaut et l'implicit wait),
+  un cas passant **et** un cas non passant chronométrés par borne ; les valeurs sont lues (pas recopiées).
+  Les anciennes valeurs abaissées (1 / 2 / 3 s) ont disparu.
+- **Assertions visibles** dans chaque méthode ; `RESULTAT` écrit **après** les assertions.
+- **Fenêtre 800x600** pour Chrome et Firefox ; **T10bis** défile explicitement avant `Actions` (Firefox
+  levait `MoveTargetOutOfBounds` : `Actions` ne défile pas seul, contrairement à `WebSync.click`).
+
+**Résultat campagne 2026-10-18 (Java 17)** — Chrome : 36 tests exécutés, 0 KO ; Firefox : 35 exécutés,
+0 KO, `ThrottledLoadTest` « Aborted » (pas de CDP hors Chrome, attendu). Mesures (secondes) :
+
+| Test | Borne | Cas | Attendu | Chrome | Firefox |
+|---|---|---|---|---|---|
+| L1 | implicit wait 3 s | passant | trouvé vers 1 s | 1,01 | 1,00 |
+| L2 | implicit wait 3 s | non passant | `NoSuchElement` à 3 s | 3,05 | 3,02 |
+| `L5_short_defaut_borne_basse` | SHORT défaut 5 s | passant | clic vers 3 s | 3,17 | 3,15 |
+| `L5_short_defaut_borne_haute` | SHORT défaut 5 s | non passant | exception à 5 s | 5,16 | 5,15 |
+| `L5_medium_vraies_valeurs` | MEDIUM défaut 15 s | passant | clic vers 10 s | 10,22 | 10,41 |
+| `L5_medium_defaut_borne_haute` | MEDIUM défaut 15 s | non passant | exception à 15 s | 15,18 | 15,22 |
+| `DynamicWaitTest` MEDIUM (PageObject) | MEDIUM 15 s | passant | trouvé vers 10 s | 10,03 | 10,01 |
+| `DynamicWaitTest` SHORT (PageObject) | SHORT 5 s | non passant | exception à 5 s | « après 5 s » | « après 5 s » |
+| `L5_short_borne_basse` | clé SHORT 10 s | passant | clic vers 5 s | 5,24 | 5,23 |
+| `L5_short_borne_haute` | clé SHORT 10 s | non passant | exception à 10 s | 10,22 | 10,06 |
+| L3 | clé MEDIUM 25 s | passant | clic vers 20 s | 20,05 | 20,46 |
+| L4 | clé MEDIUM 25 s | non passant | exception à 25 s | 25,14 | 25,20 |
+| `L5_long_borne_basse` | clé LONG 30 s | passant | clic vers 25 s | 25,10 | 25,57 |
+| `L5_long_borne_haute` | clé LONG 30 s | non passant | exception à 30 s | 30,14 | 30,23 |
+| `L5_extralong_borne_basse` | clé EXTRA_LONG 40 s | passant | clic vers 35 s | 35,12 | 35,51 |
+| `L5_extralong_borne_haute` | clé EXTRA_LONG 40 s | non passant | exception à 40 s | 40,07 | 40,17 |
+| T6bis | `pageLoadTimeout` 10 s | passant | page bloquée 5 s chargée | 5,02 | 5,07 |
+| T6 | `pageLoadTimeout` 10 s | non passant | `TimeoutException` à 10 s | 10,01 | 10,01 |
+| `ThrottledLoadTest` (2G) | `pageLoadTimeout` 10 s | non passant | `TimeoutException` à 10 s | 10,05 | Aborted |
+
+Diagnostic (SHORT 5 s, Chrome et Firefox) : T2 `[ABSENT]` ✅, T11 `[ABSENT]` sur le bon maillon ✅,
+T7 `[HIDDEN]` ✅ (avec le faux positif `[OUT_OF_BOUNDS]`, cf. `qa-socle-suggestions.md` §4), T8
+`[DISABLED]` ✅, T9 `[INTERCEPTED]` ✅, T10 / T10bis clic abouti ✅.
+
+**Reste à faire** : producteurs d'artefacts `@Disabled` à transformer en prérequis de leurs
+vérificateurs ; **PHASE 3** (parallélisme JUnit — un DOM par test KO, pas de fuite `ThreadLocal`).
+
 ## ⏱️ Mise à jour 2026-08-02 — socle corrigé, tests migrés, campagne tout-vert
 
 > Cette section **prime** sur les tableaux plus bas, qui documentent la campagne **historique du
