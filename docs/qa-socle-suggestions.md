@@ -1,11 +1,24 @@
-# Suggestions pour `qa-socle` — capture d'échec (`TestFailureManager`)
+# Suggestions pour `qa-socle` — retours du projet consommateur `qa-test`
 
-> Cible : dépôt **`ArnaudS-A5/qa-template`**, branche **`develop`**, fichier
-> `qa-socle/src/main/java/com/example/qa/internal/failure/TestFailureManager.java`.
+> Cible : dépôt **`ArnaudS-A5/qa-template`**, module `qa-socle`. §1 à §3 ont été observées sur la branche
+> `develop` (alors `com/example/qa/internal/failure/TestFailureManager.java`) ; §4 à §7 sur la branche
+> `feature/package-by-feature` (packages par fonctionnalité : `com/example/qa/failure/`, `com/example/qa/sync/`).
 >
 > Observées en consommant le socle depuis le projet `qa-test` (un test KO produit
 > `target/qa-results/KO__{ENV}__{Test}__{ts}/` avec `ERROR.log`, `FAIL.log`, `{step}.html`).
-> Trois corrections, indépendantes et toutes côté socle.
+> Corrections indépendantes, toutes côté socle.
+
+## État au 2026-10-19
+
+| § | Sujet | État | Vérifié côté `qa-test` par |
+|---|---|---|---|
+| 1 | dump HTML rendable (DOM brut, option A) | ✅ appliqué | `RawDomCaptureVerificationTest` |
+| 2 | nom du fichier = step feuille en échec | ✅ appliqué | `RawDomCaptureVerificationTest` |
+| 3 | translittération des accents (`sanitize`) | ✅ appliqué | noms des dossiers `KO__` et des `{step}.html` |
+| 4 | `[OUT_OF_BOUNDS]` à tort sur `display:none` | ⬜ **ouvert** | T7 (vert : ne vérifie que `[HIDDEN]`) |
+| 5 | `count` / `getTexts` soumis à l'implicit wait | ✅ corrigé (`8736508`) | T43, Chrome et Firefox |
+| 6 | `setWindowFocus(By)` sans résolution du locator | ✅ corrigé (`1dda2d7`, option 1) | T76, Chrome et Firefox |
+| 7 | échec soft non signalé à Serenity | ✅ corrigé (`81f66d5`, `da57c34`) | T82, Chrome et Firefox (cf. §7, « Suite ») |
 
 ---
 
@@ -155,8 +168,167 @@ fichier HTML.
 
 ---
 
-## Tests à compléter côté socle (`TestFailureArtefactsTest`)
-- `sanitize("Vérifier qu'on a réussi")` → `Verifier_quon_a_reussi` (accents translittérés, apostrophe ôtée).
+## 4. `[OUT_OF_BOUNDS]` remonté à tort pour un élément `display:none`
+
+### Constat
+`DiagnosticTest#T7_hidden` (élément présent mais `display:none`) obtient, au timeout :
+`Synchronisation impossible sur By.id: target après 1 s [HIDDEN] [OUT_OF_BOUNDS] : présent mais non
+visible ; hors de la zone atteignable`. Seul `[HIDDEN]` est attendu : l'élément n'est pas « hors
+zone », il n'a simplement pas de rendu. Le test ne vérifie que `[HIDDEN]`, il reste donc vert.
+
+### Cause
+`AbstractSyncManager.inViewport` s'appuie sur `getBoundingClientRect()`. Un élément `display:none` n'a
+pas de boîte : le rectangle vaut `0,0,0,0`, donc `r.bottom>0` est faux et la sonde conclut « hors
+viewport ». Or la Javadoc de la méthode vise « Doute → `true` (pas de faux positif) ».
+
+À ne pas confondre avec le cas d'un élément **réellement** hors viewport : il est scrollé
+automatiquement avant le clic, donc l'erreur est inatteignable en pratique (cf. T10 reclassé, T10bis).
+
+### Correctif proposé
+Ne pas juger la position d'un élément sans géométrie : soit ne sonder `OUT_OF_BOUNDS` que si l'élément
+est affiché (comme `INTERCEPTED`, qui présuppose le reste OK), soit traiter le rectangle nul comme un
+doute dans le script :
+```java
+"var r=arguments[0].getBoundingClientRect();"
++ "if (r.width===0 && r.height===0) return true;"   // pas de boîte : pas de jugement
++ "return r.bottom>0 && r.right>0 && ..."
+```
+
+### Résultat attendu
+| Cas | Avant | Après |
+|---|---|---|
+| `display:none` | `[HIDDEN] [OUT_OF_BOUNDS]` | `[HIDDEN]` |
+| visible, dans le viewport | aucun code de position | inchangé |
+
+---
+
+## 5. `count` / `getTexts` / `within` attendent l'implicit wait sur un élément absent
+
+### Constat
+`CollectionsTest#T43_absent_sans_exception` (2026-10-18, Chrome et Firefox) : `count(By.id("absent"))`
+rend bien `0`, mais en **3 071 ms** au lieu d'être immédiat. La Javadoc annonce pourtant « état courant,
+**sans attente** ». Les prédicats (`is*`, `contains*`), eux, rendent `false` en quelques ms (T14, T47).
+
+### Cause
+`AbstractSyncManager.findAll` (utilisé par `count` et `getTexts`) appelle
+`resolveScope(driver).findElements(locator)` **hors** de `withoutImplicitWait`, contrairement à `query`.
+Le driver porte l'implicit wait de `serenity.conf` (`webdriver.timeouts.implicitlywait = 3000`) :
+`findElements` attend donc jusqu'à 3 s qu'au moins un élément apparaisse. Même effet sur
+`within(absent).count(…)` : `resolveScope` fait un `findElement(container)` soumis à l'implicit wait
+avant que l'absence soit rattrapée en liste vide. Sur des éléments **présents**, aucun impact (T42).
+
+### Correctif proposé
+Exécuter `findAll` sous la même neutralisation que les prédicats :
+```java
+private List<WebElement> findAll(By locator) {
+    return withoutImplicitWait(() -> {
+        try {
+            return resolveScope(driver()).findElements(locator);
+        } catch (NoSuchElementException | StaleElementReferenceException containerGone) {
+            return List.of();
+        }
+    });
+}
+```
+
+### Résultat attendu
+| Appel sur absent | Avant | Après |
+|---|---|---|
+| `count`, `getTexts` | `0` / `[]` en ~3 s (implicit wait) | `0` / `[]` en quelques ms |
+| `within(absent).count` | `0` en ~3 s | `0` en quelques ms |
+
+---
+
+## 6. `setWindowFocus(By)` ne résout jamais son locator : faux succès sur absent
+
+### Constat
+`FenetreTest#T76_set_window_focus_absent` (2026-10-18, Chrome et Firefox) :
+`setWindowFocus(By.id("absent"))` **rend la main sans exception**. Attendu : attente du profil puis
+`SyncException [ABSENT]`, comme toute méthode qui prend un `By`. T75 confirme par ailleurs que
+`window.focus()` est bien exécuté sur un élément présent.
+
+### Cause
+`WebSync.setWindowFocus` passe par `fluentWait(locator, element -> element.setWindowFocus())`. Le
+`WebElementFacade` résolu est **paresseux**, et `WebElementFacadeImpl.setWindowFocus` (bytecode Serenity
+4.2.22) se limite à `executeScript("window.focus()")` : il ne touche **jamais** l'élément. Aucune
+`NoSuchElementException` n'est levée, donc ni boucle ni diagnostic. Le paramètre `By` est ignoré. C'est
+le « faux succès » que la Javadoc de `requireEnabled` juge « plus nuisible qu'un échec franc ».
+
+### Correctif proposé
+Au choix :
+- **Garder la signature** et forcer la résolution avant le focus, pour bénéficier de l'attente et du
+  diagnostic : par exemple résoudre l'élément brut (`resolveElement(locator)`) dans la boucle, puis
+  exécuter `window.focus()`.
+- **Ou assumer la sémantique réelle** (focus de la fenêtre, indépendant de l'élément) : exposer
+  `setWindowFocus()` sans `By`, et déprécier la variante actuelle.
+
+### Résultat attendu
+| Cas | Avant | Après (1re option) |
+|---|---|---|
+| élément présent | `window.focus()` appelé | inchangé |
+| élément absent | aucun effet visible, aucune exception | `SyncException [ABSENT]` au timeout, `window.focus()` non appelé |
+
+---
+
+## 7. Soft-assert : un `should*` en échec n'est pas signalé à Serenity
+
+Note détaillée pour l'agent du socle : `qa-test/docs/note-agent-socle-soft-assert.md`.
+
+### Constat
+Sonde du 2026-10-18 (Chrome, Java 17) : 4 `should*` alternés (OK, KO, OK, KO), chacun dans une `@Step`, avec
+`qa.assertions.soft=true`. Le test finit bien FAILED avec la liste des 2 échecs, **mais** dans le rapport
+Serenity l'étape en échec « #cache visible » est **verte**, et l'échec agrégé est rattaché à la **dernière**
+étape (rouge même si elle avait réussi). Aucun dump `{step}.html` n'est produit pour les échecs soft.
+
+### Cause
+`SoftAssertions.check` (mode soft) intercepte l'`AssertionError` et la range dans le collecteur sans rien dire
+à Serenity : l'étape se termine normalement. L'agrégat levé par `SoftAssertionExtension` en fin de test est
+ensuite imputé par Serenity à la dernière étape exécutée.
+
+### Correctif attendu
+Signaler chaque échec soft à Serenity sur l'étape en cours (rouge, capture, `{step}.html`), sans interrompre
+l'exécution ni sauter les étapes suivantes, et sans imputer l'agrégat final à la dernière étape. Le mode soft
+natif de Serenity (`StepEventBus.enableSoftAsserts()`) **ne convient pas** : mesuré, il fait disparaître les
+échecs (test vert).
+
+### Résultat attendu
+| Cas (mode soft) | Avant | Après |
+|---|---|---|
+| étape dont le `should*` échoue | verte | **rouge**, avec capture |
+| dernière étape, si elle a réussi | rouge (porte l'agrégat) | **verte** |
+| verdict du test | FAILED, liste des échecs | inchangé |
+| artefacts `KO__` | `ERROR.log`, `FAIL.log` | + un `{step}.html` par étape en échec |
+
+### Suite (2026-10-19)
+Corrigé par le socle : `81f66d5` (chaque échec soft dans une étape devient une sous-étape rouge, les étapes
+suivantes ne sont ni sautées ni privées de WebDriver ; l'extension rattache l'échec final au test) et
+`da57c34` (un dump `{step}.html` par step en échec). Vérifié par T82
+(`qa-test/src/test/java/org/automation/websync/etat/soft/SoftAssertionsTest.java`, refondu à cette occasion
+au lieu de créer le T83 prévu par la note), Chrome et Firefox : 13 étapes en échec **rouges**, 3 vertes dont la
+dernière, aucune sautée, 13 `{step}.html`, test FAILED. Mode dur inchangé (T16, T34, T48 à T58 verts dans la
+campagne du 2026-10-18, socle corrigé).
+
+Deux constats en marge :
+1. **Côté test, pas côté socle** : sous Serenity 4.2.22, un `assertThrows(AssertionError.class, …)` dans un test
+   qui finit en échec sur `AssertionError` fait repeindre en vert, en fin de test, toutes les étapes en échec
+   par ce type (`SerenityTestExecutionListener` → `BaseStepListener.exceptionExpected` →
+   `TestOutcome.resetFailingStepsCausedBy`). T82 capture donc son agrégat par `try/catch`.
+2. Le message final de Serenity annonce « The following 14 assertions failed » : les 13 échecs des étapes, puis
+   l'agrégat du socle qui les reprend. Sans gravité, laissé en l'état.
+
+---
+
+## Tests à compléter côté socle
+État constaté dans `qa-template/qa-socle/src/test/java/com/example/qa/` le 2026-10-19 (✅ présent, ⬜ à faire) :
+- ✅ `sanitize("Vérifier qu'on a réussi")` → `Verifier_quon_a_reussi` (`failure/TestFailureArtefactsTest`).
 - `folderName(...)` / nom de fichier : vérifier l'absence de `_` parasite en place d'accent.
 - `failingStep(...)` avec une hiérarchie imbriquée (parent KO + feuille KO) → renvoie la **feuille**.
 - Dump HTML : si DOM brut indisponible, repli documenté ; sinon, contenu = `<html>…` non échappé.
+- ⬜ Diagnostic (package `sync`) : élément `display:none` → le message porte `[HIDDEN]` **sans**
+  `[OUT_OF_BOUNDS]` (§4, ouvert).
+- ✅ Collections (package `sync`) : `count` / `getTexts` sur absent, avec un implicit wait non nul sur le
+  driver → résultat vide **sans** attendre l'implicit wait (§5, `sync/CollectionsTest`).
+- ✅ `setWindowFocus(By)` sur absent → `SyncException [ABSENT]` au timeout, pas de retour silencieux (§6,
+  `sync/SetWindowFocusTest`).
+- ✅ Soft-assert : signalement à Serenity dans une étape, hors étape inchangé, mode dur inchangé (§7,
+  `sync/SoftAssertionsTest`).
