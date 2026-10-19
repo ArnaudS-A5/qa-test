@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>collection</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    .item { display: inline-block; margin-right: 8px; padding: 2px 6px; background: #e0f2fe; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture collections (T42 à T44) : websync/lecture/CollectionsTest.
+    #liste : 3 li (seuls li de la page) ; #conteneur : 2 .item ; #vide : aucun .item (texte non vide,
+    pour rester un élément rendu).
+  -->
+  <h1>collection — compter, lire, contenir</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Lectures de <b>plusieurs</b> éléments : <code>count</code>, <code>getTexts</code>, <code>containsElements</code>.</p>
+    <p class="qa-expect"><code>#liste</code> : Un/Deux/Trois · <code>#conteneur</code> : 2 <code>.item</code> · <code>#vide</code> : aucun <code>.item</code>.</p>
+  </div>
+  <ul id="liste">
+    <li>Un</li>
+    <li>Deux</li>
+    <li>Trois</li>
+  </ul>
+  <div id="conteneur"><span class="item">item 1</span><span class="item">item 2</span></div>
+  <div id="vide">aucun item</div>
+</body>
+</html>
