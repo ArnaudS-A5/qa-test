@@ -36,6 +36,21 @@
     <artifactId>qa-test</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <repositories>
+        <repository>
+            <id>artifactory-snapshots</id>
+            <url>http://artifactory.home.arpa:8082/artifactory/libs-snapshot-local</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+        </repository>
+        <repository>
+            <id>artifactory-releases</id>
+            <url>http://artifactory.home.arpa:8082/artifactory/libs-release-local</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+
     <dependencies>
         <!--
           Unique dépendance du projet : le socle QA. Sa version suit celle du parent.
@@ -57,6 +72,16 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>publish-test-harness</id>
+                        <goals><goal>test-jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Exécution des tests (versions/config héritées de qa-parent). -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
