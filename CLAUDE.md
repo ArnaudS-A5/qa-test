@@ -118,9 +118,12 @@ docs/                                # prompt de validation, suivi PHASE 1, sugg
 Branches : `main` (stable) → `develop` (intégration) → `feature/*` / `fix/*` (PR vers `develop`). Les PR
 vers `main` sont des releases (squash au besoin).
 
-Convention de commit (alignée sur `qa-template`) : `<type>(<scope>): <résumé impératif court>` en
-français, types `feat|fix|test|refactor|chore|docs|ci`. Scopes usuels ici : `build`, `config`, `fixtures`,
-`pages`, `sync`, `diagnostic`, `secret`, `assertions`, `failure`, `docs`, `readme`.
+Convention de commit (uniforme, sans exception) : `<type>(<scope>): <résumé impératif court>` en français.
+- Types : `feat|fix|test|refactor|core|docs|ci`. `core` = build, configuration, outillage (jamais `chore`).
+- La portée est **toujours** présente, y compris pour la documentation : `docs(readme): …`, jamais `docs: …`.
+- Scopes usuels : `build`, `config`, `fixtures`, `pages`, `sync`, `diagnostic`, `secret`, `assertions`,
+  `failure` ; pour `docs`, le nom du document : `readme`, `claude`, `prompt`, `suivi`, `socle`.
+- Corps facultatif : 2 à 4 puces d'une ligne, pas de pavé.
 
 ## Statut du projet
 
