@@ -18,7 +18,8 @@ toujours lancé avec le Wrapper 3.9.9 du socle, y compris pour le projet consomm
    n'est réactivé. Les rapports JUnit de chaque invocation sont conservés séparément.
 5. Rapport JaCoCo du socle combinant ses tests et les appels depuis le harnais.
 6. Analyse des deux projets SonarQube existants. Le scanner utilise JDK 21 ; cela
-   ne change pas le JDK de compilation ni la cible Java 17.
+   ne change pas le JDK de compilation ni la cible Java 17. Les cinq dossiers JUnit
+   du harnais sont importés, pour conserver tous les tests et leurs échecs dans SonarQube.
 7. Attente du traitement SonarQube et vérification des résultats exacts des deux analyses.
    La gate `CI - Couverture globale 80%` ajoute une couverture globale minimale de 80 %
    et une duplication globale maximale de 3 % aux conditions de Sonar way. L'exception

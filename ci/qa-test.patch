@@ -49,7 +49,7 @@ index 1a84edf..0788d84 100644
 \ No newline at end of file
 +</project>
 diff --git a/src/test/java/org/automation/support/Fixtures.java b/src/test/java/org/automation/support/Fixtures.java
-index 7725a59..e58f0e9 100644
+index 7725a59..279409c 100644
 --- a/src/test/java/org/automation/support/Fixtures.java
 +++ b/src/test/java/org/automation/support/Fixtures.java
 @@ -9,7 +9,8 @@ import java.nio.file.Paths;
@@ -70,7 +70,7 @@ index 7725a59..e58f0e9 100644
 +            String remoteBase = System.getProperty("qa.fixtures.baseUrl");
 +            base = (remoteBase == null || remoteBase.isBlank())
 +                    ? Paths.get(resource.toURI()).toUri().toString()
-+                    : remoteBase.replaceAll("/+$", "") + "/" + name;
++                    : remoteBase + (remoteBase.endsWith("/") ? "" : "/") + name;
          } catch (Exception e) {
              throw new IllegalStateException("URL de fixture invalide pour : " + name, e);
          }

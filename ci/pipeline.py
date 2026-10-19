@@ -178,6 +178,11 @@ def analyse(name):
     if name == "template":
         args += ["-Dsonar.coverage.jacoco.xmlReportPaths=" +
                  str(TEMPLATE / "qa-socle/target/site/jacoco/jacoco.xml")]
+    if name == "tests":
+        report_dirs = sorted({str(p.parent) for p in REPORTS.glob("0*/**/TEST-*.xml")})
+        if not report_dirs:
+            raise SystemExit("Missing browser test reports")
+        args += ["-Dsonar.junit.reportPaths=" + ",".join(report_dirs)]
     require_success(maven(project, *args, scan=True))
 
 

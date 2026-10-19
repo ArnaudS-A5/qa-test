@@ -38,7 +38,7 @@ public final class Fixtures {
             String remoteBase = System.getProperty("qa.fixtures.baseUrl");
             base = (remoteBase == null || remoteBase.isBlank())
                     ? Paths.get(resource.toURI()).toUri().toString()
-                    : remoteBase.replaceAll("/+$", "") + "/" + name;
+                    : remoteBase + (remoteBase.endsWith("/") ? "" : "/") + name;
         } catch (Exception e) {
             throw new IllegalStateException("URL de fixture invalide pour : " + name, e);
         }
