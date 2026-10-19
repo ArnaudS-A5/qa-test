@@ -73,7 +73,7 @@ PY'''
         }
         stage('Tests sur Selenium Grid') {
             steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
                     withCredentials([usernamePassword(credentialsId: 'artifactory-ci', usernameVariable: 'ARTIFACTORY_USER', passwordVariable: 'ARTIFACTORY_TOKEN')]) {
                         sh 'python3 ci/pipeline.py grid'
                     }

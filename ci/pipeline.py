@@ -96,6 +96,7 @@ def save_tests(project, label):
 def build():
     COVERAGE.parent.mkdir(parents=True, exist_ok=True)
     COVERAGE.unlink(missing_ok=True)
+    (COVERAGE.parent / "counters.json").unlink(missing_ok=True)
     # Serenity listeners may request a driver even in otherwise browser-free unit tests.
     code = maven(TEMPLATE, "clean", "install", "-Dwebdriver.driver=remote",
                  "-Dwebdriver.remote.url=" + os.environ.get("GRID_URL", "http://grid.home.arpa:4444"),
