@@ -65,8 +65,10 @@ pipeline {
         }
         stage('Tests sur Selenium Grid') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'artifactory-ci', usernameVariable: 'ARTIFACTORY_USER', passwordVariable: 'ARTIFACTORY_TOKEN')]) {
-                    sh 'python3 ci/pipeline.py grid'
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    withCredentials([usernamePassword(credentialsId: 'artifactory-ci', usernameVariable: 'ARTIFACTORY_USER', passwordVariable: 'ARTIFACTORY_TOKEN')]) {
+                        sh 'python3 ci/pipeline.py grid'
+                    }
                 }
             }
         }
@@ -88,7 +90,7 @@ pipeline {
             }
         }
         stage('Publication Artifactory') {
-            when { expression { params.PUBLISH_ARTIFACTS } }
+            when { expression { params.PUBLISH_ARTIFACTS && currentBuild.currentResult == 'SUCCESS' } }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'artifactory-ci', usernameVariable: 'ARTIFACTORY_USER', passwordVariable: 'ARTIFACTORY_TOKEN')]) {
                     sh 'python3 ci/pipeline.py deploy'

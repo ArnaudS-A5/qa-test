@@ -28,7 +28,9 @@ toujours lancé avec le Wrapper 3.9.9 du socle, y compris pour le projet consomm
 8. Publication Maven des deux projets uniquement après succès des tests et des gates.
    `qa-test` publie aussi le classifier `tests`, contenant le harnais et ses ressources.
 
-Une gate rouge fait échouer le pipeline et empêche la publication. Le pipeline ne
+Les analyses sont conservées même si la campagne navigateur échoue : le build
+reste rouge et la publication est alors interdite. Une gate rouge fait également
+échouer le pipeline et empêche la publication. Le pipeline ne
 modifie ni les seuils ni les exclusions pour obtenir artificiellement un résultat vert.
 
 ## Paramètres
