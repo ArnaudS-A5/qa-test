@@ -1,8 +1,9 @@
-package org.automation;
+package org.automation.sync.cle;
 
 import com.example.qa.sync.WebSync;
 import net.serenitybdd.junit5.SerenityJUnit5Extension;
 import net.thucydides.core.webdriver.WebDriverFacade;
+import org.automation.support.Timeouts;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,8 +29,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>Objectif : prouver que, sous une vraie lenteur reseau (2G), la navigation reelle vers
  * {@code /login} depasse le {@code pageLoadTimeout} du socle et est bornee (WebDriverException).
- * A lancer avec un pageLoadTimeout bas, ex. {@code -Dqa.sync.pageLoadTimeout=2s} (throttle actif
- * uniquement ici, d'ou une commande dediee).
+ * Groupe {@code cle} : le plafond {@code qa.sync.pageLoadTimeout} est pose par l'execution « cle » du pom
+ * (la navigation 2G dure ~45 s, bien au-dela).
  */
 @ExtendWith(SerenityJUnit5Extension.class)
 class ThrottledLoadTest {
@@ -49,6 +50,7 @@ class ThrottledLoadTest {
         assumeTrue(driver instanceof HasNetworkConditions,
                 "Throttling reseau (CDP) disponible seulement sur Chromium -> test ignore hors Chrome");
         HasNetworkConditions chromium = (HasNetworkConditions) driver;
+        Duration plafond = Timeouts.pageLoadTimeout(); // garde : sans la cle, plafond socle 2 min
 
         // Profil 2G : latence 300 ms, ~250 kbit/s down, ~50 kbit/s up (debits en octets/s pour le CDP).
         ChromiumNetworkConditions cond = new ChromiumNetworkConditions();
@@ -71,7 +73,7 @@ class ThrottledLoadTest {
             long ms = (System.nanoTime() - start) / 1_000_000;
             System.out.println("[2G-throttle] RESULTAT : exception attendue=WebDriverException (borne pageLoadTimeout)"
                     + " | levee=OUI | type reel=" + ex.getClass().getName()
-                    + " | navigation NON terminee, bornee apres " + ms + " ms"
+                    + " | navigation NON terminee, bornee apres " + ms + " ms (plafond " + plafond.toMillis() + " ms)"
                     + " | message=\"" + firstLine(ex.getMessage()) + "\" => cas non passant confirme");
         } finally {
             chromium.setNetworkConditions(disabledConditions()); // on retire le throttle du process
