@@ -7,7 +7,7 @@
 échec n'est pas signalé à Serenity ».
 
 > **Suite (2026-10-19)** : **corrigé** par le socle (`81f66d5`, `da57c34`). Le « T83 » annoncé ci-dessous n'a
-> pas été créé : c'est **T82** (`qa-test/src/test/java/org/automation/websync/etat/soft/SoftAssertionsTest.java`)
+> pas été créé : c'est **T82** (aujourd'hui `qa-test/src/test/java/org/automation/websync/assertion/AssertionSoftTest.java`)
 > qui a été refondu pour vérifier ce comportement, avec 16 `should*` (13 KO, 3 OK, le dernier OK) au lieu de 8.
 > Critères 1, 2, 3, 5 et 6 vérifiés sur Chrome et Firefox. Critère 4 : le vote de fin lève bien l'agrégat des
 > 13 échecs dans l'ordre ; le message de Serenity, lui, compte 14 entrées (les 13 échecs, plus l'agrégat qui les

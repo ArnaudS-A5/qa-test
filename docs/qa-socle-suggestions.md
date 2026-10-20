@@ -10,10 +10,13 @@
 
 ## État au 2026-10-19
 
+Les constats citent les noms de tests de leur date ; les tests ont été renommés le 2026-10-20 (correspondance :
+`qa-test/docs/qa-test-suivi-phase1.md`, section « Mise à jour 2026-10-20 »).
+
 | § | Sujet | État | Vérifié côté `qa-test` par |
 |---|---|---|---|
-| 1 | dump HTML rendable (DOM brut, option A) | ✅ appliqué | `RawDomCaptureVerificationTest` |
-| 2 | nom du fichier = step feuille en échec | ✅ appliqué | `RawDomCaptureVerificationTest` |
+| 1 | dump HTML rendable (DOM brut, option A) | ✅ appliqué | `RawDomVerifierTest` (T19) |
+| 2 | nom du fichier = step feuille en échec | ✅ appliqué | `RawDomVerifierTest` (T19) |
 | 3 | translittération des accents (`sanitize`) | ✅ appliqué | noms des dossiers `KO__` et des `{step}.html` |
 | 4 | `[OUT_OF_BOUNDS]` à tort sur `display:none` | ⬜ **ouvert** | T7 (vert : ne vérifie que `[HIDDEN]`) |
 | 5 | `count` / `getTexts` soumis à l'implicit wait | ✅ corrigé (`8736508`) | T43, Chrome et Firefox |
@@ -171,7 +174,7 @@ fichier HTML.
 ## 4. `[OUT_OF_BOUNDS]` remonté à tort pour un élément `display:none`
 
 ### Constat
-`DiagnosticTest#T7_hidden` (élément présent mais `display:none`) obtient, au timeout :
+`DiagnosticCodeTest#T7_hidden` (élément présent mais `display:none`) obtient, au timeout :
 `Synchronisation impossible sur By.id: target après 1 s [HIDDEN] [OUT_OF_BOUNDS] : présent mais non
 visible ; hors de la zone atteignable`. Seul `[HIDDEN]` est attendu : l'élément n'est pas « hors
 zone », il n'a simplement pas de rendu. Le test ne vérifie que `[HIDDEN]`, il reste donc vert.
@@ -303,7 +306,7 @@ natif de Serenity (`StepEventBus.enableSoftAsserts()`) **ne convient pas** : mes
 Corrigé par le socle : `81f66d5` (chaque échec soft dans une étape devient une sous-étape rouge, les étapes
 suivantes ne sont ni sautées ni privées de WebDriver ; l'extension rattache l'échec final au test) et
 `da57c34` (un dump `{step}.html` par step en échec). Vérifié par T82
-(`qa-test/src/test/java/org/automation/websync/etat/soft/SoftAssertionsTest.java`, refondu à cette occasion
+(`qa-test/src/test/java/org/automation/websync/assertion/AssertionSoftTest.java` depuis le 2026-10-20, refondu à cette occasion
 au lieu de créer le T83 prévu par la note), Chrome et Firefox : 13 étapes en échec **rouges**, 3 vertes dont la
 dernière, aucune sautée, 13 `{step}.html`, test FAILED. Mode dur inchangé (T16, T34, T48 à T58 verts dans la
 campagne du 2026-10-18, socle corrigé).
