@@ -90,8 +90,8 @@ Suivi en direct dans un 2ᵉ terminal : `tail -n +1 -F logs/campagne-chrome.log`
 
 ```bash
 # -Dtest désactive le profil campagne : aucune clé n'est posée, à passer à la main si le test en dépend.
-mvn test -Dtest=BornesLimitesTest
-mvn test -Dtest='ProfilMediumCleTest#L4_profil_borne_haute' -Dqa.sync.timeout.medium=25s
+mvn test -Dtest=ImplicitWaitDefaultTest
+mvn test -Dtest='ProfileMediumConfiguredTest#L4_medium_high' -Dqa.sync.timeout.medium=25s
 ```
 
 ### 5. Intégration continue (Jenkins)
@@ -132,10 +132,10 @@ def campagne(String navigateur) {
 - ⚠️ Pipeline non encore exécuté sur un agent : à valider (mode headless, fenêtre 800x600, charge de l'agent
   pour les tests chronométrés).
 
-### 6. Soft-assert : T82, lancé à la main
+### 6. Soft-assert : T17 et T82, lancés à la main
 
-T82 (`src/test/java/org/automation/websync/etat/soft/SoftAssertionsTest.java`) est **rouge à dessein** :
-`@Disabled`, hors campagne et hors CI. On le lance par l'exécution `soft` du pom, qui porte ses clés
+T17 et T82 (`src/test/java/org/automation/websync/assertion/AssertionSoftTest.java`) sont **rouges à dessein** :
+`@Disabled`, hors campagne et hors CI. On les lance par l'exécution `soft` du pom, qui porte leurs clés
 (`qa.assertions.soft=true`, SHORT à 1 s), et **pas** par `-Dtest` (qui désactive le profil `campagne`, donc ces
 clés). Une commande par navigateur :
 
@@ -144,10 +144,12 @@ mvn clean test-compile surefire:test@soft serenity:aggregate -Djunit.jupiter.con
 mvn clean test-compile surefire:test@soft serenity:aggregate -Djunit.jupiter.conditions.deactivate='*DisabledCondition' -Dwebdriver.driver=firefox
 ```
 
-- Résultats : rapport `target/site/serenity/index.html`, artefacts `target/qa-results/KO__QATEST__T82_…/`.
+- Résultats : rapport `target/site/serenity/index.html`, artefacts `target/qa-results/KO__QATEST__T17_…/` et
+  `KO__QATEST__T82_…/`.
   `clean` vide `target/` : les campagnes du §3 (`target-chrome/`, `target-firefox/`) ne sont pas touchées.
-- Ce qu'on contrôle (détail : Javadoc de la classe T82). T82 joue 16 `should*` (13 KO, 3 OK, le dernier OK),
-  deux fois, sur la fixture `websync/soft.html` :
+- T17 : les deux échecs soft figurent dans `FAIL.log` (agrégés par le vrai vote de fin de JUnit).
+- T82, ce qu'on contrôle (détail : Javadoc de `AssertionSoftTest`). T82 joue 16 `should*` (13 KO, 3 OK, le
+  dernier OK), deux fois, sur la fixture `websync/assertion/soft.html` :
   1. **le bloc**, hors étape : vérifié **dans le code** (un seul agrégat, exactement 13 échecs, dans l'ordre) ;
      la console l'atteste par `[T82] RESULTAT bloc … => bloc confirme` ;
   2. **les étapes**, une par `should*` : dans le rapport, 13 étapes **rouges** et 3 **vertes** (n° 8, 14 et 16),
@@ -161,22 +163,22 @@ mvn clean test-compile surefire:test@soft serenity:aggregate -Djunit.jupiter.con
 
 > **Garde-fou = annotation `@Disabled`** : les tests qui échouent à dessein (démo capture KO, spike DOM
 > brut, producteurs d'artefacts, soft-assert T17 et T82) sont `@Disabled`. On les réactive à la demande avec
-> `-Djunit.jupiter.conditions.deactivate='*DisabledCondition'` (T82 : §6).
+> `-Djunit.jupiter.conditions.deactivate='*DisabledCondition'` (T17 et T82 : §6).
 
 ## La campagne : cinq groupes de configuration
 
 Les timeouts du socle se règlent par clés `qa.*`. Un même profil ne peut pas être à la fois « surchargé »
 et « par défaut » dans une JVM : le profil Maven **`campagne`** (actif sauf si `-Dtest` est passé) découpe
-donc la campagne en **cinq exécutions Surefire, sélectionnées par package**, chacune avec ses propriétés
-et ses JVM en parallèle (`forkCount`) :
+donc la campagne en **cinq exécutions Surefire, sélectionnées par package** (par nom de classe pour `soft`),
+chacune avec ses propriétés et ses JVM en parallèle (`forkCount`) :
 
-| Exécution | Package | Propriétés posées par le pom |
+| Exécution | Sélection | Propriétés posées par le pom |
 |---|---|---|
-| `defaut` | tout le reste (un nouveau test n'est jamais oublié) | **aucune** : SHORT 5 s, MEDIUM 15 s, LONG 60 s, EXTRA_LONG 120 s, pageLoad 2 min |
-| `cle` | `org.automation.sync.cle` | `short=10s`, `medium=25s`, `long=30s`, `extraLong=40s`, `pageLoadTimeout=10s` |
-| `precedence` | `org.automation.sync.precedence` | `environment=override-D` (T24) |
-| `polling` | `org.automation.sync.polling` | `pollingInterval=2000ms` (T78 ; défaut socle 250 ms) |
-| `soft` | `org.automation.websync.etat.soft` | `qa.assertions.soft=true` (partout ailleurs, `should*` durs), `short=1s` (un `should*` en échec attend le timeout du profil). Seul test : T82, `@Disabled`, lancé à la main par cette exécution (§6) |
+| `defaults` | tout le reste (un nouveau test n'est jamais oublié) | **aucune** : SHORT 5 s, MEDIUM 15 s, LONG 60 s, EXTRA_LONG 120 s, pageLoad 2 min |
+| `configured` | package `org.automation.config.configured` | `short=10s`, `medium=25s`, `long=30s`, `extraLong=40s`, `pageLoadTimeout=10s` |
+| `precedence` | package `org.automation.config.precedence` | `environment=override-D` (T24) |
+| `polling` | package `org.automation.config.polling` | `pollingInterval=2000ms` (T78 ; défaut socle 250 ms) |
+| `soft` | classes `**/websync/assertion/AssertionSoft*Test` (les assertions dures du même package restent dans `defaults`) | `qa.assertions.soft=true` (partout ailleurs, `should*` durs), `short=1s` (un `should*` en échec attend le timeout du profil). Tests : T17 et T82, `@Disabled`, lancés à la main par cette exécution (§6) |
 
 **Règle des tests aux limites (± 5 s).** Cas passant : la cible apparaît à `timeout − 5 s`, le clic
 aboutit après l'avoir réellement attendue. Cas non passant : la cible apparaît à `timeout + 5 s`, la
@@ -185,12 +187,12 @@ que la borne appliquée est la bonne). Marge réduite à **2 s** quand le timeou
 défaut 5 s, implicit wait 3 s).
 
 **Valeurs écrites à un seul endroit.** Les tests **lisent** la clé (ou le défaut du socle) via
-`support/Timeouts` et en déduisent leurs délais. Chaque clé du groupe `cle` **diffère du défaut**, sinon
-rien ne prouverait qu'elle est lue. Garde : un test `cle` lancé sans sa clé (ou un test `defaut` avec une
+`support/Timeouts` et en déduisent leurs délais. Chaque clé du groupe `configured` **diffère du défaut**, sinon
+rien ne prouverait qu'elle est lue. Garde : un test `configured` lancé sans sa clé (ou un test `defaults` avec une
 clé) échoue avec un message explicite.
 
 **Navigateurs.** Fenêtre **800x600** identique pour Chrome et Firefox (`serenity.conf`) : même géométrie
-de viewport. `ThrottledLoadTest` (throttling CDP) n'existe que sur Chrome : sur Firefox, son
+de viewport. `PageLoadThrottledTest` (throttling CDP) n'existe que sur Chrome : sur Firefox, son
 `assumeTrue` l'interrompt volontairement → **« Aborted »** chez Serenity, « Skipped » chez Surefire.
 
 ### Artefacts KO (tests `@Disabled`, hors campagne)
@@ -203,19 +205,19 @@ vérificateurs). *À venir : faire des producteurs des **prérequis** de leurs v
 rm -rf target/qa-results   # indispensable avant toute campagne producteur/vérificateur
 DIS="-Djunit.jupiter.conditions.deactivate=*DisabledCondition"
 
-# 1) RawDomCapture : 2 échecs volontaires (LOGIN + CHECKBOXES, en parallèle) → artefacts + dump DOM.
-mvn test -Dtest='RawDomCaptureProducerTest' "$DIS"
+# 1) RawDomProducer : 2 échecs volontaires (LOGIN + CHECKBOXES, en parallèle) → artefacts + dump DOM.
+mvn test -Dtest='RawDomProducerTest' "$DIS"
 # 2) Valide : DOM réel <html>, masquage password, un DOM par test (no-leak ThreadLocal). Doit être VERT.
-mvn test -Dtest='RawDomCaptureVerificationTest' "$DIS"
+mvn test -Dtest='RawDomVerifierTest' "$DIS"
 
 # 3) Artefacts : échec volontaire HORS @Step → ERROR.log + FAIL.log (pas de {step}.html).
 #    -Dqa.sync.timeout.long=3s : simple accélération (l'élément est absent, inutile d'attendre 60 s).
-mvn test -Dtest='ArtefactsProducerTest' -Dqa.sync.timeout.long=3s "$DIS"
-# 4) ArtefactsVerification : ROUGE ATTENDU (échec du producteur hors @Step → pas de {step}.html).
-mvn test -Dtest='ArtefactsVerificationTest' "$DIS"
+mvn test -Dtest='ArtifactProducerTest' -Dqa.sync.timeout.long=3s "$DIS"
+# 4) ArtifactVerifier : ROUGE ATTENDU (échec du producteur hors @Step → pas de {step}.html).
+mvn test -Dtest='ArtifactVerifierTest' "$DIS"
 
-# 5) SoftAssert (T17) : soft-assert agrégé (soft=true) → échec EN FIN, produit son artefact KO__.
-mvn test -Dtest='SoftAssertTest' -Dqa.assertions.soft=true "$DIS"
+# 5) T17 : soft-assert agrégé (soft=true) → échec EN FIN, produit son artefact KO__ (ou par §6, avec T82).
+mvn test -Dtest='AssertionSoftTest#T17_should_aggregated' -Dqa.assertions.soft=true "$DIS"
 ```
 
 > **Résultats attendus** : 2) **vert** (4/4) ; 1), 3), 5) **rouges volontaires** (producteurs) ; 4)
@@ -240,10 +242,10 @@ un site rapide : chaque interaction trouve sa cible **déjà présente** (page c
 de `WebSync`), donc le budget de timeout n'est jamais consommé. Pour éprouver réellement les bornes
 contre le site dédié, il faut une **cible qui met du temps à apparaître** :
 
-- **`DynamicWaitTest`** (groupe `defaut`) injecte un bouton `#delayed` après **10 s** (JS, page réelle),
+- **`DynamicWaitTest`** (S3, groupe `defaults`) injecte un bouton `#delayed` après **10 s** (JS, page réelle),
   profil choisi dans le PageObject (`web(SyncTimeout)`) : `SHORT` (5 s) échoue → `SyncException`,
   `MEDIUM` (15 s) réussit — soit exactement la règle ± 5 s aux valeurs par défaut. **Cross-browser.**
-- **`ThrottledLoadTest`** (groupe `cle`, `pageLoadTimeout=10s`) applique un vrai **throttle 2G** (CDP) :
+- **`PageLoadThrottledTest`** (T83, groupe `configured`, `pageLoadTimeout=10s`) applique un vrai **throttle 2G** (CDP) :
   la navigation `/login` (~45 s) dépasse le plafond → `TimeoutException` à ~10 s (navigation bornée).
   **Chrome uniquement** (« Aborted » sur Firefox, cf. plus haut).
 
@@ -251,11 +253,11 @@ contre le site dédié, il faut une **cible qui met du temps à apparaître** :
 
 | Ensemble | Rôle |
 |---|---|
-| `sync/` (L*, T6, T24, T77, T78) | **Bornes** des mécanismes d'attente du socle : chaque profil `SyncTimeout`, aux défauts **et** par clé, `pageLoadTimeout`, précédence de configuration, intervalle de sondage. Chronométré, règle ± 5 s. |
-| `websync/` (T25 à T82) | **Surface complète de l'API `WebSync`** : chaque méthode publique de synchronisation est appelée par au moins un test (100 %, 78/78), sur des fixtures dédiées (`fixtures/websync/`), avec étapes `@Step` et captures. |
-| `phase1/` (L1, L2, L6, T1 à T23) | Harnais historique de la PHASE 1 : bornes de l'implicit wait, diagnostic actif (`[ABSENT]`, `[HIDDEN]`…), formulaire et `Secret`, soft-assert T17 et artefacts `KO__` (`@Disabled`). |
-| `AuthenticationTest`, `DynamicWaitTest`, `ThrottledLoadTest` | PHASE 2 sur site réel : smoke de la chaîne (le mot de passe est un `Secret`, **masqué** dans les rapports), passage du profil par PageObject, throttle 2G réel (Chrome). |
-| `AuthenticationTest#invalid_login_is_captured_by_qa_socle`, `RawDomCapture*Test` | `@Disabled` (échec volontaire) : démonstration de la **capture d'échec** du socle (ci-dessous). |
+| `config/` (L1 à L6, T6, T24, T77, T78, T83) | **Configuration et horloge** du moteur de synchro : chaque profil `SyncTimeout`, aux défauts **et** par clé, implicit wait, `pageLoadTimeout`, précédence de configuration, intervalle de sondage. Chronométré, règle ± 5 s. |
+| `websync/` (T1, T2, T5, T7 à T17, T22, T25 à T82, T84) | **Surface complète de l'API `WebSync`**, par domaine : chaque méthode publique de synchronisation est appelée par au moins un test (100 %, 78/78), sur des fixtures locales, avec étapes `@Step` et captures. |
+| `failure/` (T18 à T23) | `@Disabled` (échec volontaire) : la **capture d'échec** du socle, produite puis relue (ci-dessous). |
+| `site/` (S3, S4, S5) | PHASE 2 sur site réel : connexion (le mot de passe est un `Secret`, **masqué** dans les rapports), capture KO (`@Disabled`), passage du profil par PageObject. |
+| `demo/` | Démo `java.awt.Robot` (curseur OS réel), hors socle. |
 
 ### La consommation réelle du socle : la capture d'échec
 
@@ -274,7 +276,7 @@ target/qa-results/KO__{ENV}__{NomDuTest}__{yyyy-MM-dd_HH-mm-ss}/
 dessein). Pour rejouer la démo et produire les artefacts :
 
 ```bash
-mvn test -Dtest='AuthenticationTest#invalid_login_is_captured_by_qa_socle' \
+mvn test -Dtest='LoginTest#S4_login_failure_captured' \
   -Djunit.jupiter.conditions.deactivate='*DisabledCondition' \
   -Dmaven.test.failure.ignore=true -Denvironment=recette
 ```
@@ -299,48 +301,66 @@ mvn test -Dtest='AuthenticationTest#invalid_login_is_captured_by_qa_socle' \
 
 ```
 src/test/java/org/automation/
-├── sync/                         # tests aux limites des timeouts, rangés par GROUPE de configuration
-│   ├── defaut/                   #   Profil{Short,Medium}DefautTest — défauts du socle (aucune clé),
-│   │                             #   ProfilVuePageObjectDefautTest (T77 : web(SyncTimeout) sans effet de bord)
-│   ├── cle/                      #   Profil{Short,Medium,Long,ExtraLong}CleTest, PageLoadTest (T6/T6bis),
-│   │                             #   ThrottledLoadTest (2G réel, Chrome) — clés posées par le pom
+├── config/                       # configuration et horloge du moteur de synchro, rangées par GROUPE du pom
+│   ├── defaults/                 #   Profile{Short,Medium}DefaultTest (L5), ProfileViewDefaultTest (T77),
+│   │                             #   ImplicitWaitDefaultTest (L1, L2, L6) — aucune clé
+│   ├── configured/               #   Profile{Short,Medium,Long,ExtraLong}ConfiguredTest (L3-L5),
+│   │                             #   PageLoadConfiguredTest (T6/T6bis), PageLoadThrottledTest (T83, 2G réel,
+│   │                             #   Chrome) — clés posées par le pom
 │   ├── precedence/               #   PrecedenceConfigTest (T24)
 │   └── polling/                  #   PollingIntervalTest (T78) — qa.sync.pollingInterval posé par le pom
-├── websync/                      # surface de l'API WebSync, rangée comme le socle range ses méthodes
-│   ├── action/                   #   FormulaireClavierTest (T25-T26), ActionsJavaScriptTest (T27-T30),
-│   │                             #   PointeurTest (T31-T32), FenetreTest (T75-T76, fenêtres mère/fille)
-│   ├── within/                   #   ImbricationWithinTest (T79-T81) — within sur 5 niveaux
-│   ├── select/                   #   ListeDeroulanteTest (T33-T36)
-│   ├── lecture/                  #   LecturesDomTest (T37-T41), CollectionsTest (T42-T44)
-│   ├── etat/                     #   PredicatsTest (T45-T47), AssertionsDuresTest (T48-T58)
-│   │   └── soft/                 #     SoftAssertionsTest (T82, @Disabled : 16 should* soft en bloc puis en
-│   │                             #     étapes ; clés posées par l'exécution « soft » du pom, cf. §6)
-│   ├── attente/                  #   AttentesEtatTest (T59-T66), AttentesDureeExpliciteTest (T67-T70)
-│   └── exception/                #   ExceptionSyncTest (T71-T74)
-├── phase1/                       # PHASE 1 (fixtures) : BornesLimitesTest, DiagnosticTest, FormEtSecretTest,
-│                                 #   SoftAssertTest et Artefacts*Test (@Disabled), RobotMouseDemoTest (démo
-│                                 #   java.awt.Robot, curseur OS — bloc commenté, hors socle)
-├── support/                      # Fixtures (file://), Timeouts (lecture clés/défauts + garde), BornesProfil
+├── websync/                      # surface de l'API WebSync, un sous-package par domaine
+│   ├── action/                   #   ActionKeyboardTest (T25-T26), ActionJavaScriptTest (T27-T30),
+│   │                             #   ActionPointerTest (T31-T32), ActionWindowTest (T75-T76, mère/fille),
+│   │                             #   ActionFormTest (T84, T22)
+│   ├── within/                   #   WithinNestedTest (T11 sur 2 niveaux, T79-T81 sur 5 niveaux)
+│   ├── select/                   #   SelectListTest (T33-T36)
+│   ├── read/                     #   ReadDomTest (T37-T41), ReadCollectionTest (T42-T44)
+│   ├── state/                    #   StatePredicateTest (T14, T45-T47)
+│   ├── assertion/                #   AssertionHardTest (T16, T48-T58), AssertionSoftTest (T17, T82 :
+│   │                             #   @Disabled, clés posées par l'exécution « soft » du pom, cf. §6)
+│   ├── wait/                     #   WaitStateTest (T15, T59-T66), WaitDurationTest (T67-T70),
+│   │                             #   WaitFluentTest (T1, T5)
+│   └── diagnostic/               #   DiagnosticCodeTest (T2, T7-T10bis), DiagnosticCauseTest (T71-T74)
+├── failure/                      # capture d'échec (@Disabled) : Artifact{Producer,Verifier}Test (T18-T23),
+│                                 #   RawDom{Producer,Verifier}Test (T19, site réel, en parallèle)
+├── site/                         # PHASE 2, site réel : LoginTest (S5, S4 @Disabled), DynamicWaitTest (S3)
+├── demo/                         # RobotMouseDemoTest : curseur OS réel (java.awt.Robot), bloc commenté, hors socle
+├── support/                      # outillage partagé, sans test : Fixtures (file://), Timeouts (clés/défauts +
+│                                 #   garde), ProfileBounds (cible à timeout ± marge), Transitions (scénarios)
 ├── pages/                        # PageObjects — étendent QaPageObject du socle (champ WebSync `web` hérité)
 │   ├── LoginPage.java            #   login réel ; type(By, Secret), click, waitUntilVisible
 │   ├── CheckboxesPage.java       #   2e page (spike DOM), marqueur #checkboxes
 │   └── DelayedButtonPage.java    #   injecte #delayed après un délai ; web(SyncTimeout) par profil
-├── steps/                        # Steps @Step (orchestration ; écrites « attendu passant »)
-│   ├── LoginSteps.java           #   le Secret transite jusqu'à WebSync.type (aucun clair)
-│   ├── CheckboxesSteps.java
-│   ├── DelayedButtonSteps.java
-│   └── websync/                  #   étapes de la surface WebSync (Action, Lecture, Etat, Select, Within)
-├── AuthenticationTest.java       # PHASE 2 smoke (login réel) + capture KO @Disabled
-├── DynamicWaitTest.java          # PHASE 2 : passage du profil SyncTimeout (SHORT échoue / MEDIUM réussit)
-└── RawDomCapture{Producer,Verification}Test.java  # spike capture DOM brut (@Disabled)
+└── steps/                        # Steps @Step (orchestration ; écrites « attendu passant »)
+    ├── LoginSteps.java           #   le Secret transite jusqu'à WebSync.type (aucun clair)
+    ├── CheckboxesSteps.java
+    ├── DelayedButtonSteps.java
+    └── websync/                  #   étapes de la surface WebSync (Action, Read, State, Select, Within ; base
+                                  #   WebSyncSteps), chacune au nom de la méthode du socle qu'elle appelle
+src/test/resources/fixtures/      # HTML locaux (file://), rangés comme les tests : une fixture vit dans le
+├── appear, form, offscreen,      #   dossier le plus profond que partagent tous ses utilisateurs ;
+│   states, transitions .html     #   celles-ci servent à plusieurs domaines
+├── config/configured/            #   slowload.html
+└── websync/                      #   action/ (keyboard, javascript, pointer, window-parent, window-child),
+                                  #   within/ (nested, nested-deep), select/, read/ (attributes, collection),
+                                  #   assertion/ (soft), wait/ (disappear, rerender),
+                                  #   diagnostic/ (hidden, disabled, overlay)
 ```
+
+> **Convention de nommage** : le code en anglais (packages, classes, méthodes, constantes, variables,
+> paramètres), en français ce qui se lit (commentaires, messages, titres d'étape, `@DisplayName` sans accents) ;
+> méthode de test `<ID>_<sujet>[_<précision>]` (`T59_waitUntilPresent`, `L5_short_low`) ; `@DisplayName`
+> `<ID> - <PASS | NON PASS | PASS + NON PASS> - <description>` (`PASS + NON PASS` : T11, T34, T48 à T58, qui
+> jouent un appel qui réussit puis un appel qui doit échouer). Détail : CLAUDE.md, « Principes de test »,
+> « Convention de nommage ».
 
 > **Étapes `@Step` : où, et pourquoi pas partout.** Les actions et vérifications passantes des tests `websync/`
 > passent par des étapes (`steps/websync/`) : le rapport Serenity les montre une à une, avec une capture après
 > chacune (`take.screenshots = AFTER_EACH_STEP`), pour contrôler à l'œil ce que vérifie le test. Restent hors
 > étape : l'appel dont on **attend l'échec** (une étape avalerait l'exception), tout appel **chronométré**
-> (l'étape et sa capture fausseraient la mesure), donc `sync/`, `websync/attente/`, `websync/exception/` et
-> `phase1/` en entier. En **mode soft**, un `should*` en échec ne lève rien : dans une étape, il la rend
+> (l'étape et sa capture fausseraient la mesure), donc `config/`, `websync/wait/`, `websync/diagnostic/` et
+> `failure/` en entier. En **mode soft**, un `should*` en échec ne lève rien : dans une étape, il la rend
 > **rouge** (sous-étape portant le message) sans arrêter le test ; T82 le joue hors étape **et** en étapes.
 > Piège Serenity : dans un test qui finit rouge, un `assertThrows(AssertionError.class, …)` fait **repeindre en
 > vert**, en fin de test, toutes les étapes en échec par `AssertionError` ; T82 capture donc son agrégat par
@@ -367,9 +387,9 @@ Le socle capte désormais le **DOM brut** (`driver.getPageSource()`) au `stepFai
 `StepListener` + `ThreadLocal`, avec repli sur la source Serenity. Deux tests valident le mécanisme
 de bout en bout (tous deux `@Disabled` → réactivés à la demande) :
 
-- `RawDomCaptureProducerTest` — provoque 2 échecs sur 2 pages distinctes (LOGIN / CHECKBOXES) **en
+- `RawDomProducerTest` — provoque 2 échecs sur 2 pages distinctes (LOGIN / CHECKBOXES) **en
   parallèle** (`@Execution(CONCURRENT)`) pour stresser le pont `ThreadLocal`.
-- `RawDomCaptureVerificationTest` — relit les artefacts et vérifie : **(1)** DOM non vide,
+- `RawDomVerifierTest` — relit les artefacts et vérifie : **(1)** DOM non vide,
   **(2)** DOM brut/rendable (vrai `<html>`, pas la vue Prism échappée du repli), **(3)** chaque
   artefact porte le DOM de SA page (aucune fuite entre threads). **Strict** : un artefact attendu
   manquant fait ÉCHOUER le test (jamais de skip silencieux).
@@ -377,11 +397,11 @@ de bout en bout (tous deux `@Disabled` → réactivés à la demande) :
 ```bash
 # 1) Produire les artefacts (vrai navigateur, en parallèle)
 rm -rf target/qa-results
-mvn test -Dtest=RawDomCaptureProducerTest \
+mvn test -Dtest=RawDomProducerTest \
   -Djunit.jupiter.conditions.deactivate='*DisabledCondition' \
   -Dmaven.test.failure.ignore=true -Denvironment=recette
 # 2) Valider les points 1, 2, 3
-mvn test -Dtest=RawDomCaptureVerificationTest \
+mvn test -Dtest=RawDomVerifierTest \
   -Djunit.jupiter.conditions.deactivate='*DisabledCondition'
 ```
 
