@@ -4,9 +4,135 @@
 > Source : `docs/qa-test-prompt.md`, chapitre 3 (PHASE 1). Objectif : **aucun trou dans la raquette** —
 > chaque test du document figure ici avec son statut. Un test non exécuté ou en échec est **notifié**.
 
+## ⏱️ Mise à jour 2026-10-20 (suite) — étapes des tests venus de `phase1/`, noms internes en anglais, `PASS` / `NON PASS`
+
+> Cette section **prime** sur tout ce qui suit. La section suivante (même jour) reste valable pour la
+> correspondance des noms ; son format de `@DisplayName` est remplacé par celui-ci.
+
+**Ce qui a changé :**
+- **`@DisplayName`** : `<ID> - <PASS | NON PASS | PASS + NON PASS> - <description>`, au lieu de « passant /
+  non passant / passant et non passant ». 54 `PASS`, 37 `NON PASS`, 13 `PASS + NON PASS` (T11, T34, T48 à T58 :
+  un appel qui réussit puis un appel qui doit échouer, non scindés). Les dossiers `KO__` portent le nouveau
+  libellé ; les vérificateurs d'artefacts n'en dépendent pas (ils cherchent `password`, `Echec_volontaire`,
+  `LOGIN`, `CHECKBOXES`).
+- **Étapes `@Step` pour les tests venus de `phase1/`** (règle : CLAUDE.md, « Étapes `@Step` ») :
+  1. T22 et T84 (`websync/action/ActionFormTest`) : entièrement en étapes ;
+  2. T11 (`websync/within/WithinNestedTest`) et T16 (`websync/assertion/AssertionHardTest`) : ouverture, cas
+     passant et constat en étapes ; l'appel qui doit échouer reste direct (`assertThrows`) ;
+  3. T14 (`websync/state/StatePredicateTest`) : ouverture en étape ; les prédicats, chronométrés, restent directs ;
+  4. deux étapes ajoutées : `WebSyncSteps.open(fixture, query)` (fixture paramétrée) et
+     `ActionSteps.type(By, Secret)`, dont le titre affiche le rendu masqué du socle (`Fi****** (sha256:…)`).
+- **Noms internes en anglais** (35 fichiers) : constantes privées (`CACHE` → `HIDDEN`, `CHEMIN_B` → `PATH_B`),
+  variables locales (`voteDeFin` → `endVote`, `plafond` → `ceiling`), paramètres des étapes et du support
+  (`valeur` → `value`, `delai` → `delay`). Portée vérifiée nom par nom : tous privés à leur classe ou à leur
+  méthode, sauf `RawDomVerifierTest.loadArtefacts` → `loadArtifacts`, appelé par JUnit seul (`@BeforeAll`).
+  Renommage limité au code : chaînes, messages, logs, titres d'étape et id des fixtures inchangés.
+- **Fixtures** : seuls les **commentaires** HTML mis à jour (22 fichiers : tests, classes et packages cités) ;
+  comparaison avant / après commentaires retirés : identiques.
+- **T11 complété** (`websync/within/WithinNestedTest`) : il promettait « cause = bon maillon » sans le vérifier
+  (le message cite `By.id: child` même quand c'est le container qui manque). Il vérifie désormais, comme T81,
+  que la cause est une `NoSuchElementException` nommant l'élément absent (`box-bidon`, `child-bidon`) ;
+  `@DisplayName` raccourci : « within : clic reussi, sinon la cause nomme l'element absent ». Vert sur Chrome et
+  Firefox (lancé seul après la campagne) : le socle nomme bien l'élément absent.
+- Divers : `pom.xml` (« groupe cle » → `configured`), import inutile retiré (`ArtifactVerifierTest`), en-tête de
+  T48 replacé au-dessus de sa méthode, alignement des numéros de vérification de T82.
+
+**Résultat de la campagne complète après cette passe (2026-10-20, Java 17, `README` « Lancer les tests » §3)** :
+
+| Navigateur | Tests | OK | KO | Ignorés | Durée |
+|---|---|---|---|---|---|
+| Chrome | 104 | 93 | 0 | 11 (`@Disabled` : T17, T18 ×2, T19 ×6, T82, S4) | 3 min 37 |
+| Firefox | 104 | 92 | 0 | 12 (les mêmes, plus T83 « Aborted » : pas de CDP hors Chrome) | 3 min 47 |
+
+Contrôles complémentaires, sur les deux navigateurs :
+1. **Rapport Serenity** : T11, T14, T16, T22 et T84 montrent leurs étapes, chacune avec sa capture ; T22 affiche
+   `Saisir « Fi**************** (sha256:…) » dans By.id: password`. Le clair (`Fixture-Secret-T22`) n'apparaît
+   dans aucun rapport, artefact ni log.
+2. **Défaut trouvé à la relecture du rapport, corrigé** : avec deux titres différents, `type(By, String)` et
+   `type(By, Secret)` étaient confondus (T84 affichait « Saisir le secret bonjour… ») : Serenity retrouve le titre
+   d'une étape par son nom et son nombre de paramètres. Les deux surcharges portent désormais le même titre.
+   `ActionFormTest` et `ActionKeyboardTest` rejoués : 4/4, titres justes.
+3. **T17 et T82** (exécution `soft`, README §6) : rouges à dessein ; T82 bloc confirmé, étapes 13 rouges et 3
+   vertes dans l'ordre attendu, 13 `{step}.html`.
+
+Une première passe, lancée par erreur sous **Java 25** (JDK par défaut du terminal de l'agent), a donné
+`S3_short` KO sur les deux navigateurs : le hook `assertThrows` de Serenity ne s'installe pas au-delà de Java 17
+(README « Lancer les tests » §1). Résultats écartés ; ceux ci-dessus sont sous Java 17.
+
+## ⏱️ Mise à jour 2026-10-20 — convention de nommage, `phase1/` réparti, fixtures rangées comme les tests
+
+> Section conservée comme trace (elle primait sur les suivantes) ; son format de `@DisplayName` est remplacé
+> par `PASS` / `NON PASS` (section ci-dessus). Les sections antérieures citent les anciens noms, cf. la
+> correspondance ci-dessous.
+
+**Ce qui a changé :**
+- **Convention de nommage** (CLAUDE.md, « Principes de test », « Convention de nommage ») : le code en
+  anglais, en français ce qui se lit ; méthode de test `<ID>_<sujet>[_<précision>]` ; `@DisplayName`
+  `<ID> - <passant | non passant | passant et non passant> - <description>`, sans accents.
+- **`sync/` devient `config/`** (groupes du pom `defaults`, `configured`, `precedence`, `polling`, `soft`).
+- **`phase1/` réparti** dans les domaines ; les assertions dures et souples partagent `websync/assertion/`
+  (le groupe `soft` sélectionne `AssertionSoft*Test` par nom de classe).
+- **Nouveaux ID** pour des tests qui n'en avaient pas : T83 (throttle 2G), T84 (formulaire), S3, S4, S5,
+  T17 à T19 (soft-assert agrégé, producteurs et vérificateurs d'artefacts).
+- **Étapes** au nom de la méthode du socle appelée ; **support** en anglais (`ProfileBounds`, `Transitions.open`,
+  `Scenario.APPEAR`…).
+- **Fixtures** en anglais, rangées comme les tests ; seul contenu modifié : le lien de `window-parent.html` vers
+  `window-child.html`.
+
+**Correspondance des classes** (chemins relatifs à `src/test/java/org/automation/`). Les méthodes gardent leur
+ID : on retrouve un test par son ID (`T43_`, `L4_`…).
+
+| Ancien | Nouveau |
+|---|---|
+| `sync/defaut/ProfilShortDefautTest`, `ProfilMediumDefautTest` | `config/defaults/ProfileShortDefaultTest`, `ProfileMediumDefaultTest` |
+| `sync/defaut/ProfilVuePageObjectDefautTest` | `config/defaults/ProfileViewDefaultTest` |
+| `phase1/BornesLimitesTest` (L1, L2, L6) | `config/defaults/ImplicitWaitDefaultTest` |
+| `sync/cle/Profil{Short,Medium,Long,ExtraLong}CleTest` | `config/configured/Profile{…}ConfiguredTest` |
+| `sync/cle/PageLoadTest`, `ThrottledLoadTest` | `config/configured/PageLoadConfiguredTest`, `PageLoadThrottledTest` (T83) |
+| `sync/precedence/PrecedenceConfigTest`, `sync/polling/PollingIntervalTest` | `config/precedence/…`, `config/polling/…` (noms inchangés) |
+| `websync/action/FormulaireClavierTest`, `ActionsJavaScriptTest`, `PointeurTest`, `FenetreTest` | `websync/action/ActionKeyboardTest`, `ActionJavaScriptTest`, `ActionPointerTest`, `ActionWindowTest` |
+| `phase1/FormEtSecretTest` (surface, T22) | `websync/action/ActionFormTest` (T84, T22) |
+| `websync/within/ImbricationWithinTest` + `BornesLimitesTest` T11 | `websync/within/WithinNestedTest` |
+| `websync/select/ListeDeroulanteTest` | `websync/select/SelectListTest` |
+| `websync/lecture/LecturesDomTest`, `CollectionsTest` | `websync/read/ReadDomTest`, `ReadCollectionTest` |
+| `websync/etat/PredicatsTest` + `BornesLimitesTest` T14 | `websync/state/StatePredicateTest` |
+| `websync/etat/AssertionsDuresTest` + `FormEtSecretTest` T16 | `websync/assertion/AssertionHardTest` |
+| `websync/etat/soft/SoftAssertionsTest` (T82) + `phase1/SoftAssertTest` (T17) | `websync/assertion/AssertionSoftTest` |
+| `websync/attente/AttentesEtatTest` + `BornesLimitesTest` T15 | `websync/wait/WaitStateTest` |
+| `websync/attente/AttentesDureeExpliciteTest` | `websync/wait/WaitDurationTest` |
+| `phase1/BornesLimitesTest` (T1, T5) | `websync/wait/WaitFluentTest` |
+| `phase1/DiagnosticTest` + `BornesLimitesTest` T2 | `websync/diagnostic/DiagnosticCodeTest` |
+| `websync/exception/ExceptionSyncTest` | `websync/diagnostic/DiagnosticCauseTest` |
+| `phase1/ArtefactsProducerTest`, `ArtefactsVerificationTest` | `failure/ArtifactProducerTest`, `ArtifactVerifierTest` |
+| `RawDomCaptureProducerTest`, `RawDomCaptureVerificationTest` | `failure/RawDomProducerTest`, `RawDomVerifierTest` |
+| `AuthenticationTest`, `DynamicWaitTest` | `site/LoginTest`, `site/DynamicWaitTest` |
+| `phase1/RobotMouseDemoTest` | `demo/RobotMouseDemoTest` |
+| `steps/websync/EtapesWebSync`, `EtatSteps`, `LectureSteps` | `steps/websync/WebSyncSteps`, `StateSteps`, `ReadSteps` |
+| `support/BornesProfil` | `support/ProfileBounds` |
+
+**Correspondance des fixtures** (sous `src/test/resources/fixtures/`) : `websync/etats.html` → `states.html`,
+`websync/transitions.html` → `transitions.html`, `websync/saisie.html` → `websync/action/keyboard.html`,
+`websync/pointeur.html` → `websync/action/pointer.html`, `websync/javascript.html` → `websync/action/`,
+`websync/fenetre-mere.html` / `fenetre-fille.html` → `websync/action/window-parent.html` / `window-child.html`,
+`websync/imbrication.html` → `websync/within/nested-deep.html`, `nested.html` → `websync/within/`,
+`websync/select.html` → `websync/select/`, `websync/attributs.html` → `websync/read/attributes.html`,
+`websync/collection.html` → `websync/read/`, `websync/soft.html` → `websync/assertion/`, `disappear.html` et
+`rerender.html` → `websync/wait/`, `hidden.html`, `disabled.html`, `overlay.html` → `websync/diagnostic/`,
+`slowload.html` → `config/configured/`. Inchangées à la racine : `appear.html`, `form.html`, `offscreen.html`.
+
+**Résultat de la campagne complète après renommage (2026-10-20, Java 17, `README` « Lancer les tests » §3)** :
+
+| Navigateur | Tests | OK | KO | Ignorés | Durée |
+|---|---|---|---|---|---|
+| Chrome | 104 | 93 | 0 | 11 (`@Disabled` : T17, T18 ×2, T19 ×6, T82, S4) | 3 min 38 |
+| Firefox | 104 | 92 | 0 | 12 (les mêmes, plus T83 « Aborted » : pas de CDP hors Chrome) | 3 min 43 |
+
+Avant le renommage (2026-10-18) : 104 tests, 93 OK sur Chrome, seul KO l'ancien T82. Les mêmes tests passent ;
+T82, désormais `@Disabled`, a rejoint les ignorés.
+
 ## ⏱️ Mise à jour 2026-10-19 — surface `WebSync` complète, étapes `@Step`, soft-assert visible
 
-> Cette section **prime** sur tout ce qui suit (sections antérieures conservées comme trace).
+> Section antérieure, conservée comme trace (elle primait sur les suivantes).
 
 **Ce qui a changé depuis le 2026-10-18 (matin) :**
 - **Surface de l'API `WebSync` couverte** : T25 à T82 dans `org.automation.websync` (un sous-package par
