@@ -33,8 +33,8 @@ mkdir -p logs && mvn clean verify > logs/campagne-chrome.log 2>&1
 tail -n +1 -F logs/campagne-chrome.log           # dans un autre terminal (VS Code)
 
 # Une seule classe / une seule méthode (-Dtest désactive le profil `campagne` : aucune clé posée)
-mvn test -Dtest=BornesLimitesTest
-mvn test -Dtest='ProfilMediumCleTest#L4_profil_borne_haute' -Dqa.sync.timeout.medium=25s
+mvn test -Dtest=ImplicitWaitDefaultTest
+mvn test -Dtest='ProfileMediumConfiguredTest#L4_medium_high' -Dqa.sync.timeout.medium=25s
 
 # Chrome PUIS Firefox en une commande, résultats conservés dans target-chrome/ et target-firefox/ :
 # README « Lancer les tests » §3 (jamais & entre deux campagnes : même target/). CI Jenkins : §5.
@@ -48,20 +48,21 @@ mvn clean verify -Dmaven.test.failure.ignore=false
 Les timeouts du socle se règlent par clés `qa.*` (précédence `-D` > `serenity.conf`, cf. T24). Un même
 profil ne pouvant pas être à la fois « surchargé » et « par défaut » dans une JVM, le profil `campagne`
 (actif sauf si `-Dtest` est passé) découpe la campagne en **exécutions Surefire sélectionnées par
-package**, chacune avec ses propres propriétés et ses JVM en parallèle (`forkCount`) :
+package** (par nom de classe pour `soft`), chacune avec ses propres propriétés et ses JVM en parallèle
+(`forkCount`) :
 
-| Exécution | Package | Propriétés posées |
+| Exécution | Sélection | Propriétés posées |
 |---|---|---|
-| `defaut` | tout ce qui n'est pas dans les autres groupes (un nouveau test n'est jamais oublié) | **aucune** : défauts du socle (SHORT 5 s, MEDIUM 15 s, LONG 60 s, EXTRA_LONG 120 s, pageLoad 2 min) |
-| `cle` | `org.automation.sync.cle` | `short=10s`, `medium=25s`, `long=30s`, `extraLong=40s`, `pageLoadTimeout=10s` |
-| `precedence` | `org.automation.sync.precedence` | `environment=override-D` (T24) |
-| `polling` | `org.automation.sync.polling` | `pollingInterval=2000ms` (T78 ; défaut socle 250 ms) |
-| `soft` | `org.automation.websync.etat.soft` | `qa.assertions.soft=true` (partout ailleurs, `should*` durs), `short=1s` (un `should*` en échec attend le timeout du profil). Seul test : T82, `@Disabled`, lancé à la main par cette exécution |
+| `defaults` | tout ce qui n'est pas dans les autres groupes (un nouveau test n'est jamais oublié) | **aucune** : défauts du socle (SHORT 5 s, MEDIUM 15 s, LONG 60 s, EXTRA_LONG 120 s, pageLoad 2 min) |
+| `configured` | package `org.automation.config.configured` | `short=10s`, `medium=25s`, `long=30s`, `extraLong=40s`, `pageLoadTimeout=10s` |
+| `precedence` | package `org.automation.config.precedence` | `environment=override-D` (T24) |
+| `polling` | package `org.automation.config.polling` | `pollingInterval=2000ms` (T78 ; défaut socle 250 ms) |
+| `soft` | classes `**/websync/assertion/AssertionSoft*Test` (le package `assertion` contient aussi les assertions dures, qui restent dans `defaults`) | `qa.assertions.soft=true` (partout ailleurs, `should*` durs), `short=1s` (un `should*` en échec attend le timeout du profil). Tests : T17 et T82, `@Disabled`, lancés à la main par cette exécution |
 
 - **Valeurs écrites à un seul endroit (le pom)** : les tests aux limites les **lisent** via
   `support/Timeouts` (clé, ou `SyncTimeout.defaultValue()`) et en déduisent leurs délais. Garde : un test
-  `cle` lancé sans sa clé, ou un test `defaut` lancé avec une clé, échoue avec un message explicite.
-- **Chaque clé du groupe `cle` diffère du défaut**, sinon rien ne prouverait qu'elle est lue.
+  `configured` lancé sans sa clé, ou un test `defaults` lancé avec une clé, échoue avec un message explicite.
+- **Chaque clé du groupe `configured` diffère du défaut**, sinon rien ne prouverait qu'elle est lue.
 - **Règle aux limites ± 5 s** : cas passant = cible à `timeout − 5 s` ; cas non passant = cible à
   `timeout + 5 s`, exception attendue **entre** le timeout et l'arrivée de la cible (chronométrée). Marge
   réduite à **2 s** quand le timeout est trop court (SHORT par défaut 5 s, implicit wait 3 s).
@@ -77,10 +78,11 @@ Les tests qui échouent **à dessein** (producteurs d'artefacts, soft-assert) so
 campagne. Les réactiver explicitement (les échecs n'arrêtent pas le build, cf. ci-dessus) :
 
 ```bash
-mvn test -Dtest=ArtefactsProducerTest -Djunit.jupiter.conditions.deactivate='*DisabledCondition'
+mvn test -Dtest=ArtifactProducerTest -Djunit.jupiter.conditions.deactivate='*DisabledCondition'
 ```
 
-T82 (soft-assert) se lance par l'exécution `soft` du pom, qui porte ses clés (`-Dtest` les perdrait) :
+T17 et T82 (soft-assert, `AssertionSoftTest`) se lancent par l'exécution `soft` du pom, qui porte leurs clés
+(`-Dtest` les perdrait) :
 `mvn clean test-compile surefire:test@soft serenity:aggregate -Djunit.jupiter.conditions.deactivate='*DisabledCondition'`
 (+ `-Dwebdriver.driver=firefox`). Détail : README « Lancer les tests » §6.
 
@@ -89,51 +91,56 @@ T82 (soft-assert) se lance par l'exécution `soft` du pom, qui porte ses clés (
 ```
 pom.xml                              # parent qa-parent ; UNE dépendance : qa-socle ; profil `campagne`
 src/test/java/org/automation/
-  sync/                              # Tests aux limites des timeouts, rangés par GROUPE de configuration
-    defaut/                          #   exécution « defaut » (aucune clé)
-      Profil{Short,Medium}DefautTest #     bornes ± marge aux défauts du socle (SHORT 5 s, MEDIUM 15 s)
-      ProfilVuePageObjectDefautTest  #     T77 : web(SyncTimeout) rend une vue distincte, web reste MEDIUM
-    cle/                             #   exécution « cle » (clés posées par le pom)
-      Profil{Short,Medium,Long,ExtraLong}CleTest  # bornes ± 5 s par clé (L3/L4, L5-*)
-      PageLoadTest                   #     T6 / T6bis (pageLoadTimeout ± 5 s)
-      ThrottledLoadTest              #     throttle 2G réel (Chrome only ; « Aborted » sur Firefox : assumeTrue)
+  config/                            # Configuration et horloge du moteur de synchro, rangées par GROUPE du pom
+    defaults/                        #   exécution « defaults » (aucune clé)
+      Profile{Short,Medium}DefaultTest  #   bornes ± marge aux défauts du socle (L5 : SHORT 5 s, MEDIUM 15 s)
+      ProfileViewDefaultTest         #     T77 : web(SyncTimeout) rend une vue distincte, web reste MEDIUM
+      ImplicitWaitDefaultTest        #     L1/L2 (implicit wait ± 2 s), L6 (sondage WebSync vs implicit wait)
+    configured/                      #   exécution « configured » (clés posées par le pom)
+      Profile{Short,Medium,Long,ExtraLong}ConfiguredTest  # bornes ± 5 s par clé (L3/L4, L5)
+      PageLoadConfiguredTest         #     T6 / T6bis (pageLoadTimeout ± 5 s)
+      PageLoadThrottledTest          #     T83 : throttle 2G réel (Chrome only ; « Aborted » sur Firefox : assumeTrue)
     precedence/
       PrecedenceConfigTest           #   T24 (précédence -D > serenity.conf ; préalables -D et conf vérifiés)
     polling/
       PollingIntervalTest            #   T78 (qa.sync.pollingInterval : clic au 3e sondage)
-  websync/                           # Surface de l'API WebSync (groupe « defaut »), rangée comme le socle range
-                                     # ses méthodes ; un sous-package par domaine, fixtures dans fixtures/websync/,
+  websync/                           # Surface de l'API WebSync (groupe « defaults »), un sous-package par domaine ;
                                      # étapes @Step dans steps/websync/ (cf. « Étapes @Step »)
-    action/                          #   FormulaireClavierTest (T25-T26), ActionsJavaScriptTest (T27-T30),
-                                     #   PointeurTest (T31-T32), FenetreTest (T75-T76, fenêtres mère/fille)
-    within/                          #   ImbricationWithinTest (T79-T81, within sur 5 niveaux + leurre)
-    select/                          #   ListeDeroulanteTest (T33-T36)
-    lecture/                         #   LecturesDomTest (T37-T41), CollectionsTest (T42-T44)
-    etat/                            #   PredicatsTest (T45-T47), AssertionsDuresTest (T48-T58)
-      soft/                          #     SoftAssertionsTest (T82, groupe « soft », @Disabled : 16 should*
-                                     #     (13 KO, 3 OK) en bloc hors étape, puis en étapes ; rouge à dessein)
-    attente/                         #   AttentesEtatTest (T59-T66, ± 5 s), AttentesDureeExpliciteTest (T67-T70)
-    exception/                       #   ExceptionSyncTest (T71-T74 : cause, codes, suppressed)
-  phase1/                            # PHASE 1 — fixtures locales (groupe « defaut »)
-    BornesLimitesTest                #   L1/L2 (implicit wait ± 2 s), L6, T1/T2/T5/T11/T14/T15
-    DiagnosticTest                   #   T7–T10 + T10bis (diagnostic actif ; équivalence pointeur WebSync/Actions)
-    FormEtSecretTest                 #   surface formulaire, T22 (Secret), T16 (should* dur)
-    SoftAssertTest                   #   T17 (soft-assert agrégé) — @Disabled
-    Artefacts{Producer,Verification}Test  # T18–T23 via fixture — @Disabled
-    RobotMouseDemoTest               #   démo Robot (curseur OS réel) — bloc commenté, hors socle
-  pages/  steps/                     # PHASE 2 — PageObjects (étendent QaPageObject du socle : `web` hérité) + Steps
-    steps/websync/                   #   étapes de la surface WebSync : Action, Lecture, Etat, Select, Within
-                                     #   (base EtapesWebSync : ouvrir une fixture, profil)
-  AuthenticationTest                 # smoke login réel + capture KO (@Disabled)
-  DynamicWaitTest                    # passage du profil SyncTimeout via PageObject (#delayed à 10 s : SHORT KO / MEDIUM OK)
-  RawDomCapture{Producer,Verification}Test # capture DOM brut + masquage sur @Step (site réel) — @Disabled
-  support/                           # Fixtures (URL file://), Timeouts (lecture clés/défauts + garde), BornesProfil
+    action/                          #   ActionKeyboardTest (T25-T26), ActionJavaScriptTest (T27-T30),
+                                     #   ActionPointerTest (T31-T32), ActionWindowTest (T75-T76, fenêtres mère/fille),
+                                     #   ActionFormTest (T84 formulaire complet, T22 Secret)
+    within/                          #   WithinNestedTest (T11 sur 2 niveaux ; T79-T81 sur 5 niveaux + leurre)
+    select/                          #   SelectListTest (T33-T36)
+    read/                            #   ReadDomTest (T37-T41), ReadCollectionTest (T42-T44)
+    state/                           #   StatePredicateTest (T14, T45-T47)
+    assertion/                       #   AssertionHardTest (T16, T48-T58) ; AssertionSoftTest (T17, T82 : groupe
+                                     #   « soft », @Disabled, rouges à dessein)
+    wait/                            #   WaitStateTest (T15, T59-T66 ± 5 s), WaitDurationTest (T67-T70),
+                                     #   WaitFluentTest (T1 élément tardif, T5 stale)
+    diagnostic/                      #   DiagnosticCodeTest (T2, T7-T10bis : codes), DiagnosticCauseTest (T71-T74 :
+                                     #   cause, suppressed)
+  failure/                           # Capture d'échec du socle (KO__), @Disabled : ArtifactProducerTest /
+                                     # ArtifactVerifierTest (T18-T23), RawDomProducerTest / RawDomVerifierTest (T19)
+  site/                              # PHASE 2, site réel : LoginTest (S5 connexion, S4 capture KO @Disabled),
+                                     # DynamicWaitTest (S3 : profil SyncTimeout via PageObject, SHORT KO / MEDIUM OK)
+  demo/                              # RobotMouseDemoTest : curseur OS réel (java.awt.Robot), bloc commenté, hors socle
+  pages/                             # PageObjects (étendent QaPageObject du socle : `web` hérité)
+  steps/                             # Steps des PageObjects (Login, Checkboxes, DelayedButton)
+    websync/                         #   étapes de la surface WebSync : Action, Read, State, Select, Within
+                                     #   (base WebSyncSteps : open une fixture, avec ou sans paramètres ;
+                                     #   withProfile). ActionSteps.type existe aussi pour un Secret (titre masqué)
+  support/                           # outillage partagé, sans test : Fixtures (URL file://), Timeouts (clés/défauts
+                                     # + garde), ProfileBounds (cible à timeout ± marge), Transitions (scénarios)
 src/test/resources/
-  fixtures/*.html                    # 10 fixtures JS inline (délais/états contrôlés)
-  fixtures/websync/*.html            # fixtures dédiées à la surface WebSync (saisie, javascript, pointeur,
-                                     # select, attributs, collection, etats, transitions, fenetre-mere/fille,
-                                     # imbrication, soft)
-                                     # — une fixture existante n'est jamais modifiée
+  fixtures/                          # HTML locaux (file://), rangés comme les tests : une fixture vit dans le
+                                     # dossier le plus profond que partagent tous ses utilisateurs
+    appear, form, offscreen, states, transitions .html   # partagées entre plusieurs domaines
+    config/configured/               #   slowload.html
+    websync/action/                  #   keyboard, javascript, pointer, window-parent, window-child .html
+    websync/within/                  #   nested.html (2 niveaux), nested-deep.html (5 niveaux + leurre)
+    websync/select/  websync/read/   #   select.html ; attributes.html, collection.html
+    websync/assertion/               #   soft.html (T82, éléments dans l'ordre des vérifications)
+    websync/wait/  websync/diagnostic/  # disappear, rerender .html ; hidden, disabled, overlay .html
   serenity.conf                      # config Serenity (fenêtre 800x600 Chrome + Firefox) + clés qa.* du socle
   junit-platform.properties          # parallélisme JUnit (same_thread par défaut ; CONCURRENT ciblé)
   logback-test.xml
@@ -155,13 +162,38 @@ docs/                                # prompt de validation, suivi d'exécution,
 - **Identifiants** (`docs/qa-test-prompt.md`) : **L** = test aux **limites** (bornes ± 5 s), **T** = test de
   comportement, **S** = **site** réel (PHASE 2). **C** n'est pas un identifiant de test : c'est un **point
   critique** de la revue de code du socle (ex. C8 « une seule horloge »). Un nouveau test prend le **T
-  suivant** le plus grand existant (T82 au 2026-10-18), préfixe repris dans le nom de méthode et le
+  suivant** le plus grand existant (T84 au 2026-10-20), préfixe repris dans le nom de méthode et le
   `@DisplayName`.
+- **Convention de nommage** (décision du 2026-10-20) :
+  1. **le code en anglais** : packages, classes, méthodes (tests, étapes, pages, support), constantes, variables
+     et paramètres (étapes comprises), identifiants des exécutions du pom ; les valeurs qui viennent d'une
+     fixture restent telles quelles (`HIDDEN = By.id("cache")`, paramètre `scenario=apparition`) ;
+  2. **en français ce qui se lit** : commentaires et Javadoc, messages d'assertion et logs, titres d'étape `@Step`
+     (l'application est en français), `@DisplayName` ;
+  3. **ordre des mots** : le nom de la famille d'abord, la variante ensuite, pour que les membres se suivent
+     (`AssertionHardTest` / `AssertionSoftTest`, `ProfileShortDefaultTest` / `ProfileShortConfiguredTest`,
+     `PageLoadConfiguredTest` / `PageLoadThrottledTest`) ;
+  4. **méthode de test** : `<ID>_<sujet>[_<précision>]`, le sujet étant la méthode du socle visée écrite comme
+     dans l'API (`T59_waitUntilPresent`) ou quelques mots anglais courts (`T37_visible_text`) ; un test aux
+     limites finit par `_low` (borne basse) ou `_high` (borne haute) ; jamais de « ok/ko » dans le nom ;
+  5. **`@DisplayName`** : `<ID> - <PASS | NON PASS | PASS + NON PASS> - <description>`, description en français
+     **sans accents** ; `PASS` / `NON PASS` se lit sur l'appel au socle (il réussit ou doit échouer), pas sur la
+     couleur du test ; `PASS + NON PASS` pour les 13 tests qui jouent un appel qui réussit puis un appel qui doit
+     échouer, non scindés (T11, T34, T48 à T58) ;
+  6. **packages** : un par domaine ; deux variantes d'un même domaine se distinguent par le nom de la classe ;
+  7. **étapes** : une étape porte le nom de la méthode du socle qu'elle appelle (`StateSteps.shouldBeVisible`) ;
+     deux surcharges d'une étape avec le même nombre de paramètres portent le **même titre** `@Step` : Serenity
+     retrouve le titre par le nom et le nombre de paramètres, et confondrait sinon les deux
+     (`ActionSteps.type(By, String)` / `type(By, Secret)`, constaté le 2026-10-20) ;
+  8. **fixtures** : noms anglais, rangées comme les tests (cf. « Architecture »).
 - **Une classe = un domaine** (plusieurs `@Test` indépendants, un navigateur neuf chacun) ; **un `@Test` =
   un comportement**, éventuellement plusieurs actions, chacune suivie de son assertion. Pas de test
   fourre-tout : un échec arrête le reste de sa méthode.
-- **Fixtures** : ne jamais modifier une fixture existante (régression des tests qui l'utilisent) ; un besoin
-  nouveau = une fixture nouvelle et dédiée.
+- **Fixtures** : ne jamais modifier le contenu d'une fixture existante (régression des tests qui l'utilisent) ;
+  un besoin nouveau = une fixture nouvelle et dédiée. Exceptions admises (2026-10-20) : un renommage qui casse
+  un lien entre fixtures (`window-parent.html` ouvre `window-child.html`), et la tenue à jour des seuls
+  **commentaires** HTML (tests, classes et packages cités), contrôlée par comparaison des fixtures commentaires
+  retirés.
 - **Étapes `@Step`** (décision du 2026-10-18) : comme chez un vrai consommateur, les actions et vérifications
   **passantes** des tests `websync/` passent par des étapes (`steps/websync/`, une étape = un appel au socle),
   rapportées avec leurs paramètres et une capture (`serenity.take.screenshots = AFTER_EACH_STEP`) : le rapport
@@ -173,9 +205,11 @@ docs/                                # prompt de validation, suivi d'exécution,
      d'exception (convention 1) ;
   2. tout appel **chronométré** (bornes ± 5 s / ± 2 s, « immédiat ») : l'instrumentation de l'étape et sa capture
      s'ajouteraient à la mesure ;
-  3. d'où des classes **entièrement sans étape** : `sync/` (bornes des profils, précédence, polling),
-     `websync/attente/` (bornes ± 5 s), `websync/exception/` (structure de l'exception), et `phase1/` (harnais
-     historique de bornes et de diagnostic, conservé tel quel).
+  3. d'où des classes **entièrement sans étape** : `config/` (bornes des profils, implicit wait, précédence,
+     polling), `websync/wait/` (bornes ± 5 s, `fluentWait`), `websync/diagnostic/` (codes et structure de
+     l'exception) et `failure/` (producteurs et vérificateurs d'artefacts). Les tests venus de l'ancien `phase1/`
+     suivent la règle depuis le 2026-10-20 : T22 et T84 entièrement en étapes, T11 et T16 avec leur constat en
+     étape, T14 avec sa seule ouverture en étape (ses prédicats sont chronométrés).
 
   **Mode soft** (`qa.assertions.soft=true`) : un `should*` en échec ne lève rien, il est collecté ; **dans une
   étape**, le socle le signale aussi à Serenity (sous-étape rouge portant le message, capture, `{step}.html`)
@@ -213,6 +247,22 @@ Convention de commit (uniforme, sans exception) : `<type>(<scope>): <résumé im
 
 ## Statut du projet
 
+> Les entrées antérieures au 2026-10-20 citent les anciens noms de packages, de classes et de fixtures ;
+> correspondance : `docs/qa-test-suivi-phase1.md`, section « Mise à jour 2026-10-20 ».
+
+- **Étapes pour les tests venus de `phase1/`, noms internes en anglais, `PASS` / `NON PASS` (2026-10-20,
+  suite).** T22 et T84 entièrement en étapes, T11 et T16 avec leur constat en étape, T14 avec son ouverture en
+  étape ; constantes, variables et paramètres traduits (portée vérifiée : privés à leur classe ou méthode) ;
+  `@DisplayName` en `PASS` / `NON PASS` / `PASS + NON PASS` ; commentaires HTML des fixtures à jour (eux seuls).
+  Campagne complète (Java 17) : **104 tests, 0 KO** ; Chrome 93 OK, 11 ignorés, 3 min 37 ; Firefox 92 OK, 12
+  ignorés, 3 min 47. Détail et contrôles du rapport : `docs/qa-test-suivi-phase1.md`, section la plus récente.
+- **Convention de nommage appliquée (2026-10-20).** Code en anglais, `@DisplayName` en français sans accents
+  avec le cas (passant / non passant, depuis `PASS` / `NON PASS`), `sync/` devenu `config/`, `phase1/` réparti dans les domaines, fixtures
+  en anglais rangées comme les tests, étapes au nom de la méthode du socle appelée. Nouveaux ID : T83, T84, S3,
+  S4, S5 (et T17 à T19 portés par les noms de méthodes). Campagne complète après renommage (Java 17) :
+  **104 tests, 0 KO** sur les deux navigateurs ; Chrome 93 OK, 11 ignorés (`@Disabled`), 3 min 38 ; Firefox
+  92 OK, 12 ignorés (dont T83, « Aborted » hors Chrome), 3 min 43. Les mêmes tests passent qu'avant le
+  renommage.
 - **Soft-assert visible dans le rapport, T82 refondu (2026-10-19).** Le socle signale chaque échec soft
   survenu dans une étape (sous-étape rouge, un `{step}.html` par étape en échec ; commits socle `81f66d5`,
   `da57c34`, écart `docs/qa-socle-suggestions.md` §7). T82 est désormais **rouge à dessein et `@Disabled`** :
@@ -264,14 +314,11 @@ Convention de commit (uniforme, sans exception) : `<type>(<scope>): <résumé im
   vérification. (3) **Assertions visibles** dans chaque méthode de test (pas cachées dans un helper ; seule
   exception : les `should*` des Steps Serenity, ex. `shouldSeeLoginSuccess`).
 - **Reste à faire** :
-  1. **convention de nommage** des packages, classes et tests (langue, ordre des mots) : proposition à valider,
-     aucune modification faite ;
-  2. producteurs d'artefacts `@Disabled` à transformer en **prérequis** de leurs vérificateurs (T18-T23) ;
-  3. écart socle encore ouvert : `[OUT_OF_BOUNDS]` faux positif sur `display:none` (T7, suggestions §4) ;
-  4. **PHASE 2** : tests S1 à S4 sur sites réels ;
-  5. **PHASE 3** : parallélisme (un DOM par test KO, pas de fuite `ThreadLocal`) ;
-  6. `Jenkinsfile` réel (README « Lancer les tests » §5, pipeline non encore exécuté) ;
-  7. relancer la campagne complète Chrome + Firefox après la refonte de T82.
+  1. producteurs d'artefacts `@Disabled` à transformer en **prérequis** de leurs vérificateurs (T18-T23) ;
+  2. écart socle encore ouvert : `[OUT_OF_BOUNDS]` faux positif sur `display:none` (T7, suggestions §4) ;
+  3. **PHASE 2** : tests S1 et S2 sur sites réels ;
+  4. **PHASE 3** : parallélisme (un DOM par test KO, pas de fuite `ThreadLocal`) ;
+  5. `Jenkinsfile` réel (README « Lancer les tests » §5, pipeline non encore exécuté).
 
 ## Documentation de référence
 
