@@ -98,13 +98,15 @@
           Les timeouts du socle se règlent par clés (qa.sync.*). Un même profil ne peut pas être à la fois
           « surchargé » et « par défaut » dans une JVM : chaque groupe de tests = une exécution Surefire
           (ses JVM + ses propriétés), sélectionnée par PACKAGE :
-            - org/automation/sync/cle/**        → exécution « cle »        : clés posées ci-dessous ;
-            - org/automation/sync/precedence/** → exécution « precedence » : environment surchargé (T24) ;
-            - org/automation/sync/polling/**    → exécution « polling »    : intervalle de sondage surchargé (T78) ;
-            - org/automation/websync/etat/soft/** → exécution « soft »     : assertions souples activées, SHORT à
-                                                  1 s (T82, @Disabled : lancé à la main par cette exécution) ;
-            - tout le reste                     → exécution « defaut »     : AUCUNE clé (défauts du socle).
-          « defaut » ramasse tout ce qui n'est pas dans les autres : un nouveau test n'est jamais oublié.
+            - org/automation/config/configured/** → exécution « configured » : clés posées ci-dessous ;
+            - org/automation/config/precedence/** → exécution « precedence » : environment surchargé (T24) ;
+            - org/automation/config/polling/**    → exécution « polling »    : intervalle de sondage surchargé (T78) ;
+            - **/websync/assertion/AssertionSoft*Test.java (motif de CLASSE, le package assertion contient aussi
+                                                    les assertions dures) → exécution « soft » : assertions
+                                                    souples activées, SHORT à 1 s (T17, T82, @Disabled : lancés
+                                                    à la main par cette exécution) ;
+            - tout le reste                       → exécution « defaults »   : AUCUNE clé (défauts du socle).
+          « defaults » ramasse tout ce qui n'est pas dans les autres : un nouveau test n'est jamais oublié.
           Les tests aux limites LISENT ces valeurs (support/Timeouts) pour en déduire leurs délais
           (cible à timeout ± 5 s) : les valeurs ne sont écrites qu'ici.
 
@@ -112,7 +114,7 @@
           Les exécutions, elles, s'enchaînent (Maven ne les parallélise pas).
 
           Actif sauf si -Dtest=... est passé : `mvn test -Dtest=X` garde son comportement habituel (sans
-          clé ; un test du groupe cle le signale alors explicitement). Hors campagne : les tests @Disabled
+          clé ; un test du groupe configured le signale alors explicitement). Hors campagne : les tests @Disabled
           (producteurs d'échec volontaire, T17 et T82 soft-assert), lancés à la main (README « Lancer les tests »).
         -->
         <profile>
@@ -139,32 +141,32 @@
                                 </configuration>
                             </execution>
 
-                            <!-- Groupe « defaut » : aucune clé qa.sync.* → profils aux défauts du socle
+                            <!-- Groupe « defaults » : aucune clé qa.sync.* → profils aux défauts du socle
                                  (SHORT 5s, MEDIUM 15s, LONG 60s, EXTRA_LONG 120s, pageLoadTimeout 2 min). -->
                             <execution>
-                                <id>defaut</id>
+                                <id>defaults</id>
                                 <phase>test</phase>
                                 <goals><goal>test</goal></goals>
                                 <configuration>
                                     <excludes>
                                         <exclude>**/*$*</exclude>
-                                        <exclude>org/automation/sync/cle/**</exclude>
-                                        <exclude>org/automation/sync/precedence/**</exclude>
-                                        <exclude>org/automation/sync/polling/**</exclude>
-                                        <exclude>org/automation/websync/etat/soft/**</exclude>
+                                        <exclude>org/automation/config/configured/**</exclude>
+                                        <exclude>org/automation/config/precedence/**</exclude>
+                                        <exclude>org/automation/config/polling/**</exclude>
+                                        <exclude>**/websync/assertion/AssertionSoft*Test.java</exclude>
                                     </excludes>
                                 </configuration>
                             </execution>
 
-                            <!-- Groupe « cle » : chaque clé DIFFÈRE du défaut, sinon rien ne prouverait qu'elle
+                            <!-- Groupe « configured » : chaque clé DIFFÈRE du défaut, sinon rien ne prouverait qu'elle
                                  est lue (short/medium au-dessus du défaut, long/extraLong en dessous). -->
                             <execution>
-                                <id>cle</id>
+                                <id>configured</id>
                                 <phase>test</phase>
                                 <goals><goal>test</goal></goals>
                                 <configuration>
                                     <includes>
-                                        <include>org/automation/sync/cle/**/*Test.java</include>
+                                        <include>org/automation/config/configured/**/*Test.java</include>
                                     </includes>
                                     <systemPropertyVariables>
                                         <qa.sync.timeout.short>10s</qa.sync.timeout.short>
@@ -184,7 +186,7 @@
                                 <goals><goal>test</goal></goals>
                                 <configuration>
                                     <includes>
-                                        <include>org/automation/sync/precedence/**/*Test.java</include>
+                                        <include>org/automation/config/precedence/**/*Test.java</include>
                                     </includes>
                                     <systemPropertyVariables>
                                         <environment>override-D</environment>
@@ -201,7 +203,7 @@
                                 <goals><goal>test</goal></goals>
                                 <configuration>
                                     <includes>
-                                        <include>org/automation/sync/polling/**/*Test.java</include>
+                                        <include>org/automation/config/polling/**/*Test.java</include>
                                     </includes>
                                     <systemPropertyVariables>
                                         <qa.sync.pollingInterval>2000ms</qa.sync.pollingInterval>
@@ -209,9 +211,11 @@
                                 </configuration>
                             </execution>
 
-                            <!-- Groupe « soft » : T82, assertions souples (should* collectés, KO agrégé en fin de
-                                 test). Isolé : partout ailleurs les should* restent durs (serenity.conf).
-                                 T82 est rouge à dessein, donc @Disabled : lancé à la main par cette exécution
+                            <!-- Groupe « soft » : T17 et T82, assertions souples (should* collectés, KO agrégé en fin
+                                 de test). Sélection par motif de CLASSE (AssertionSoft*Test) : le package assertion
+                                 contient aussi les assertions dures, qui restent dans « defaults ». Isolé : partout
+                                 ailleurs les should* restent durs (serenity.conf).
+                                 Rouges à dessein, donc @Disabled : lancés à la main par cette exécution
                                  (README, « Lancer les tests » §6).
                                  SHORT à 1 s : un should* en échec attend le timeout du profil avant d'être
                                  collecté ; sur une page statique, attendre davantage n'apporte rien. -->
@@ -221,7 +225,7 @@
                                 <goals><goal>test</goal></goals>
                                 <configuration>
                                     <includes>
-                                        <include>org/automation/websync/etat/soft/**/*Test.java</include>
+                                        <include>**/websync/assertion/AssertionSoft*Test.java</include>
                                     </includes>
                                     <systemPropertyVariables>
                                         <qa.assertions.soft>true</qa.assertions.soft>

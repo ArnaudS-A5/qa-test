@@ -7,43 +7,43 @@ import java.time.Duration;
 import static net.serenitybdd.core.Serenity.getDriver;
 
 /**
- * Outillage de la fixture {@code websync/transitions.html} : un seul élément {@code #cible}, qui change
+ * Outillage de la fixture {@code transitions.html} : un seul élément {@code #cible}, qui change
  * d'état après un délai selon le {@link Scenario}. Le minuteur démarre au chargement de la page.
  *
  * <p>Volontairement <b>sans assertion</b> : chaque test porte ses propres vérifications, visibles.
  */
 public final class Transitions {
 
-    public static final By CIBLE = By.id("cible");
-    public static final By STATUT = By.id("statut");
+    public static final By TARGET = By.id("cible");
+    public static final By STATUS = By.id("statut");
 
     /** Changement d'état appliqué à {@code #cible} après le délai. */
     public enum Scenario {
         /** {@code #cible} inséré visible. */
-        APPARITION("apparition"),
+        APPEAR("apparition"),
         /** {@code #cible} inséré en {@code display:none} : présent, jamais visible. */
-        APPARITION_CACHEE("apparition-cachee"),
+        APPEAR_HIDDEN("apparition-cachee"),
         /** {@code #cible} visible et désactivé dès le chargement, activé après le délai. */
-        ACTIVATION("activation"),
+        ENABLE("activation"),
         /** {@code #cible} visible et actif dès le chargement, désactivé après le délai. */
-        DESACTIVATION("desactivation"),
+        DISABLE("desactivation"),
         /** {@code #cible} visible dès le chargement, retiré du DOM après le délai. */
-        DISPARITION("disparition");
+        DISAPPEAR("disparition");
 
-        private final String parametre;
+        private final String parameter;
 
-        Scenario(String parametre) {
-            this.parametre = parametre;
+        Scenario(String parameter) {
+            this.parameter = parameter;
         }
     }
 
     private Transitions() {
     }
 
-    /** Ouvre la fixture avec la transition {@code scenario} après {@code delai} ; renvoie ce délai en ms. */
-    public static long ouvrir(Scenario scenario, Duration delai) {
-        long ms = delai.toMillis();
-        getDriver().get(Fixtures.url("websync/transitions.html", "scenario=" + scenario.parametre + "&delai=" + ms));
+    /** Ouvre la fixture avec la transition {@code scenario} après {@code delay} ; renvoie ce délai en ms. */
+    public static long open(Scenario scenario, Duration delay) {
+        long ms = delay.toMillis();
+        getDriver().get(Fixtures.url("transitions.html", "scenario=" + scenario.parameter + "&delai=" + ms));
         return ms;
     }
 }

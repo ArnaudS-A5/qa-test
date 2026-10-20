@@ -10,29 +10,29 @@ import java.util.List;
  * Étapes des vues {@code within} <b>imbriquées</b> : la chaîne de conteneurs est rapportée en entier dans le titre
  * de l'étape, du plus externe au plus interne.
  */
-public class WithinSteps extends EtapesWebSync {
+public class WithinSteps extends WebSyncSteps {
 
     @Step("Lire le texte de {1} à travers les conteneurs {0}")
-    public String texteDans(List<By> conteneurs, By cible) {
-        return vue(conteneurs).getText(cible);
+    public String getText(List<By> containers, By target) {
+        return view(containers).getText(target);
     }
 
     @Step("Compter les éléments {1} à travers les conteneurs {0}")
-    public int compterDans(List<By> conteneurs, By cible) {
-        return vue(conteneurs).count(cible);
+    public int count(List<By> containers, By target) {
+        return view(containers).count(target);
     }
 
     @Step("Cliquer sur {1} à travers les conteneurs {0}")
-    public void cliquerDans(List<By> conteneurs, By cible) {
-        vue(conteneurs).click(cible);
+    public void click(List<By> containers, By target) {
+        view(containers).click(target);
     }
 
     /** Vue bornée par la chaîne de conteneurs : un {@code within} par maillon, ré-résolu à chaque appel. */
-    private WebSync vue(List<By> conteneurs) {
-        WebSync vue = web;
-        for (By conteneur : conteneurs) {
-            vue = vue.within(conteneur);
+    private WebSync view(List<By> containers) {
+        WebSync scoped = web;
+        for (By container : containers) {
+            scoped = scoped.within(container);
         }
-        return vue;
+        return scoped;
     }
 }

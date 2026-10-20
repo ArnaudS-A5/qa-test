@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>soft</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 16px 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 8px 14px; margin: 6px 0 12px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 4px; font-size: 15px; color: #334155; }
+    .qa-expect { margin: 4px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    .bloc { margin: 6px 0; }
+    .etat { margin-left: 10px; font-size: 12px; color: #64748b; }
+    .ko { color: #b91c1c; font-weight: 600; }
+    .ok { color: #15803d; font-weight: 600; }
+    #confirmation { display: inline-block; margin: 0; padding: 4px 8px; background: #dcfce7; border-radius: 3px; }
+    #erreur { padding: 4px 8px; background: #fee2e2; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture soft-assert (T82, websync/assertion/AssertionSoftTest) : récapitulatif de commande statique.
+    Les éléments sont rangés dans l'ordre où T82 les vérifie pour la première fois ; à côté de chacun, son
+    état réel et les numéros des vérifications qui le visent, avec le résultat attendu (OK / KO). Aucun
+    minuteur : l'état ne change jamais pendant le test. Le locator #code-promo est volontairement inexistant.
+    Suite de T82 (16 should*, 13 KO, 3 OK) :
+       1 shouldBeVisible(#erreur) KO            9 shouldBeSelected(#newsletter) KO
+       2 shouldBeCurrentlyVisible(#erreur) KO  10 shouldNotBeSelected(#cgv) KO
+       3 shouldNotBeVisible(#confirmation) KO  11 shouldContainText(#confirmation, "annulée") KO
+       4 shouldBePresent(#code-promo) KO       12 shouldContainOnlyText(#confirmation, "Commande") KO
+       5 shouldNotBePresent(#confirmation) KO  13 shouldNotContainText(#confirmation, "validée") KO
+       6 shouldBeEnabled(#annuler) KO          14 shouldContainText(#confirmation, "validée") OK
+       7 shouldNotBeEnabled(#payer) KO         15 shouldContainSelectedOption(#livraison, "Express") KO
+       8 shouldBeVisible(#confirmation) OK     16 shouldBeEnabled(#payer) OK
+  -->
+  <h1>soft — récapitulatif de commande</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">États figés pour les <code>should*</code> en mode <b>soft</b> : 16 vérifications, 13 <span class="ko">KO</span> et 3 <span class="ok">OK</span>, la dernière OK.</p>
+    <p class="qa-expect">Éléments rangés dans l'ordre des vérifications ; à côté de chacun : état réel, puis n° de vérification et résultat attendu.</p>
+  </div>
+  <div class="bloc"><div id="erreur" style="display:none;">Paiement refusé</div><span class="etat">#erreur : présent, caché (display:none) — 1 <span class="ko">KO</span> · 2 <span class="ko">KO</span></span></div>
+  <div class="bloc"><p id="confirmation">Commande n° 1234 validée</p><span class="etat">#confirmation : visible — 3 <span class="ko">KO</span> · 5 <span class="ko">KO</span> · 8 <span class="ok">OK</span> · 11 <span class="ko">KO</span> · 12 <span class="ko">KO</span> · 13 <span class="ko">KO</span> · 14 <span class="ok">OK</span></span></div>
+  <div class="bloc"><span class="etat">#code-promo : absent du DOM — 4 <span class="ko">KO</span></span></div>
+  <div class="bloc"><button id="annuler" type="button" disabled>Annuler</button><span class="etat">#annuler : désactivé — 6 <span class="ko">KO</span></span></div>
+  <div class="bloc"><button id="payer" type="button">Payer</button><span class="etat">#payer : actif — 7 <span class="ko">KO</span> · 16 <span class="ok">OK</span></span></div>
+  <div class="bloc">
+    <label><input id="newsletter" type="checkbox"> Recevoir la newsletter</label><span class="etat">#newsletter : non cochée — 9 <span class="ko">KO</span></span>
+  </div>
+  <div class="bloc">
+    <label><input id="cgv" type="checkbox" checked> J'accepte les conditions générales de vente</label><span class="etat">#cgv : cochée — 10 <span class="ko">KO</span></span>
+  </div>
+  <div class="bloc">
+    <label>Mode de livraison :
+      <select id="livraison" name="livraison">
+        <option value="magasin">Retrait en magasin</option>
+        <option value="domicile">Livraison à domicile</option>
+        <option value="relais">Point relais</option>
+      </select>
+    </label><span class="etat">#livraison : Retrait en magasin / Livraison à domicile / Point relais — 15 <span class="ko">KO</span> (« Express »)</span>
+  </div>
+</body>
+</html>

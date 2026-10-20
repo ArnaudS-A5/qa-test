@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>etats</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    .bloc { margin: 6px 0; }
+    #cadre { position: relative; display: inline-block; }
+    #voile { position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; background: rgba(220, 38, 38, 0.35); }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture états statiques (T45 à T58, T71 à T74, T77) : websync/state, websync/assertion, websync/diagnostic,
+    config/defaults.
+    Un élément par état, aucun minuteur : l'état ne change jamais pendant le test.
+    Le locator #absent est volontairement inexistant.
+  -->
+  <h1>etats — un élément par état</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">États figés pour les <b>prédicats</b>, les <b>assertions</b> <code>should*</code> et la <b>structure de l'exception</b>.</p>
+    <p class="qa-expect">
+      <code>#visible</code> · <code>#cache</code> (display:none) · <code>#desactive</code> (disabled) · <code>#recouvert</code> (sous <code>#voile</code>) ·
+      <code>#cache-desactive</code> · <code>#coche</code> / <code>#non-coche</code> · <code>#texte</code> · <code>#champ</code>. <code>#absent</code> n'existe pas.
+    </p>
+  </div>
+  <div class="bloc"><button id="visible" type="button">visible</button></div>
+  <div class="bloc"><button id="cache" type="button" style="display:none;">cache</button>(#cache est en display:none)</div>
+  <div class="bloc"><button id="desactive" type="button" disabled>desactive</button></div>
+  <div class="bloc"><span id="cadre"><button id="recouvert" type="button">recouvert</button><span id="voile"></span></span></div>
+  <div class="bloc"><button id="cache-desactive" type="button" disabled style="display:none;">cache et desactive</button>(#cache-desactive : display:none + disabled)</div>
+  <div class="bloc">
+    <label><input id="coche" type="checkbox" checked> coche</label>
+    <label><input id="non-coche" type="checkbox"> non coche</label>
+  </div>
+  <p id="texte">Bonjour le monde</p>
+  <div class="bloc"><input id="champ" type="text" value="valeur initiale"></div>
+</body>
+</html>

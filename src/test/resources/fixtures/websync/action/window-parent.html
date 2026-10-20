@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>fenetre-mere</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-val { font-weight: 700; color: #15803d; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture focus fenêtre, côté MÈRE (T75, T76) : websync/action/ActionWindowTest.
+    #ouvrir-fille ouvre window-child.html dans une fenêtre séparée (popup), qui prend le focus.
+    La page publie son propre état de focus, mis à jour sur les événements focus/blur de la fenêtre :
+      #a-le-focus = oui/non · #nb-focus / #nb-blur = événements reçus · #nb-appels = appels à window.focus()
+    (espion : window.focus est enveloppé pour compter les appels, puis la fonction native est exécutée).
+  -->
+  <h1>fenêtre mère</h1>
+  <div class="qa-desc">
+    <p class="qa-sub"><code>#ouvrir-fille</code> ouvre la fenêtre fille ; chaque fenêtre affiche si elle a le focus.</p>
+  </div>
+  <button id="ouvrir-fille" type="button"
+          onclick="window.open('window-child.html', 'fille', 'width=420,height=320,left=460,top=80');">ouvrir la fenêtre fille</button>
+  <p>Fenêtre : <span class="qa-val" id="nom-fenetre">mere</span></p>
+  <p>A le focus : <span class="qa-val" id="a-le-focus">?</span>
+    · focus reçus : <span class="qa-val" id="nb-focus">0</span>
+    · blur reçus : <span class="qa-val" id="nb-blur">0</span>
+    · appels à window.focus() : <span class="qa-val" id="nb-appels">0</span></p>
+  <script>
+    (function () {
+      var compteurs = { focus: 0, blur: 0, appels: 0 };
+      var ecrire = function (id, valeur) { document.getElementById(id).textContent = String(valeur); };
+      var natif = window.focus.bind(window);
+      window.focus = function () { compteurs.appels++; ecrire('nb-appels', compteurs.appels); natif(); };
+      window.addEventListener('focus', function () { compteurs.focus++; ecrire('nb-focus', compteurs.focus); ecrire('a-le-focus', 'oui'); });
+      window.addEventListener('blur', function () { compteurs.blur++; ecrire('nb-blur', compteurs.blur); ecrire('a-le-focus', 'non'); });
+      ecrire('a-le-focus', document.hasFocus() ? 'oui' : 'non');
+    })();
+  </script>
+</body>
+</html>

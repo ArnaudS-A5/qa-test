@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>pointeur</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .qa-desc { border-left: 4px solid #2563eb; background: #f1f5f9; padding: 10px 14px; margin: 8px 0 18px; max-width: 720px; border-radius: 4px; }
+    .qa-sub { margin: 0 0 6px; font-size: 15px; color: #334155; }
+    .qa-expect { margin: 6px 0 0; font-size: 13px; color: #475569; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    .qa-val { font-weight: 700; color: #15803d; }
+    #cible { width: 220px; height: 70px; background: #dbeafe; border: 2px solid #2563eb; display: flex;
+             align-items: center; justify-content: center; user-select: none; }
+  </style>
+</head>
+<body>
+  <!--
+    Fixture pointeur (T31, T32) : websync/action/ActionPointerTest.
+    #cible écoute click (compté dans #nb-clics), dblclick et contextmenu (menu natif bloqué). #statut
+    affiche le dernier événement reçu ; pour contextmenu, le bouton de souris (2 = droit).
+    Placée en haut de page : visible sans défilement dans une fenêtre 800x600.
+  -->
+  <h1>pointeur — double-clic & clic droit</h1>
+  <div class="qa-desc">
+    <p class="qa-sub">Cible des gestes <code>doubleClick</code> et <code>contextClick</code>.</p>
+    <p class="qa-expect"><code>#statut</code> = dernier événement · <code>#nb-clics</code> = nombre de <code>click</code> reçus.</p>
+  </div>
+  <div id="cible">cible</div>
+  <p>Dernier événement : <span class="qa-val" id="statut">aucun</span> · clics : <span class="qa-val" id="nb-clics">0</span></p>
+  <script>
+    (function () {
+      var cible = document.getElementById('cible');
+      var clics = 0;
+      var statut = function (texte) { document.getElementById('statut').textContent = texte; };
+      cible.addEventListener('click', function () {
+        clics++;
+        document.getElementById('nb-clics').textContent = String(clics);
+      });
+      cible.addEventListener('dblclick', function () { statut('dblclick'); });
+      cible.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        statut('contextmenu bouton=' + e.button);
+      });
+    })();
+  </script>
+</body>
+</html>
