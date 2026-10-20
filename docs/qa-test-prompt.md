@@ -105,46 +105,54 @@ dans le `~/.m2`. **Rien à installer depuis `qa-test`.** *(En CI : Artifactory.)
 ### Fixtures (PHASE 1) — pages HTML locales sous `src/test/resources/fixtures/`
 
 Ouvertes en `file://` (`getDriver().get("file://"+chemin)`), **aucun serveur**. But : **contrôle exact**
-des délais/états pour les **tests aux limites**. Fixtures à créer (JS inline) :
+des délais/états pour les **tests aux limites**. Noms en anglais ; l'arborescence suit celle des tests : une
+fixture vit dans le dossier le plus profond que partagent tous ses utilisateurs. Une fixture existante n'est
+jamais modifiée dans son contenu : un besoin nouveau = une fixture nouvelle, pour ne pas faire régresser les
+tests en place (seuls ses commentaires HTML, qui citent ses tests, sont tenus à jour).
+
+À la racine `fixtures/`, les fixtures partagées entre plusieurs domaines :
 
 - **`appear.html`** — lit `?delay=N` (ms) et insère `#target` après `setTimeout(N)`. **Fixture pivot des
   bornes** : une seule page, tous les seuils.
-- **`disappear.html?delay=N`** — retire un élément après N ms (waits négatifs).
-- **`rerender.html?interval=N`** — remplace le nœud `#target` toutes les N ms (stale/re-render).
-- **`hidden.html`** — `#target` présent en `display:none`.
-- **`disabled.html`** — champ/bouton `disabled` (option : réactivé après N ms).
-- **`overlay.html`** — overlay `position:fixed` couvrant `#target` (interception).
 - **`offscreen.html`** — `#target` à `top:5000px` (hors viewport).
-- **`slowload.html?ms=N`** — bloque le chargement N ms (`<script>` occupé) pour `pageLoadTimeout`.
 - **`form.html`** — inputs, `<select>`, checkbox, `input[type=password]` (actions, masquage, Secret).
-- **`nested.html`** — container `#box` contenant `#child` (pour `within`).
-
-Fixtures **dédiées à la surface `WebSync`** (sous `fixtures/websync/`). Une fixture existante n'est jamais
-modifiée : un besoin nouveau = une fixture nouvelle, pour ne pas faire régresser les tests en place.
-
-- **`saisie.html`** — `#nom` (prérempli « ancien ») → `#prenom` → `#ville` → `#envoyer` dans l'ordre de
-  tabulation ; chaque soumission écrit `nom|prenom|ville` dans `#recap` et compte dans `#nb-submit`.
-- **`javascript.html`** — fixture **unique** des actions JS : `#recouvert` sous `#voile`, `#desactive`
-  (disabled), `#champ-js` / `#zone-js` avec journal d'événements, `#non-champ` (div).
-- **`pointeur.html`** — `#cible` : `#statut` = dernier événement (`dblclick`, `contextmenu bouton=N`),
-  `#nb-clics` = nombre de `click`.
-- **`select.html`** — `#simple` (Option A/B/C, valeurs a/b/c), `#multiple` (Rouge/Vert/Bleu/Jaune, valeurs
-  r/v/b/j, rien de sélectionné).
-- **`attributs.html`** — texte visible + masqué, `input value="initial"`, classes et couleur, ARIA,
-  `#boite` en position absolue (500,150) 150×40.
-- **`collection.html`** — `#liste` (Un/Deux/Trois), `#conteneur` (2 `.item`), `#vide`.
-- **`etats.html`** — un élément par état figé : `#visible`, `#cache`, `#desactive`, `#recouvert`,
+- **`states.html`** — un élément par état figé : `#visible`, `#cache`, `#desactive`, `#recouvert`,
   `#cache-desactive`, `#coche` / `#non-coche`, `#texte`, `#champ` ; `#absent` n'existe pas.
 - **`transitions.html?scenario=…&delai=N`** — `#cible` change d'état après N ms : `apparition`,
   `apparition-cachee`, `activation`, `desactivation`, `disparition` (outillage `support/Transitions`).
-- **`fenetre-mere.html`** / **`fenetre-fille.html`** — la mère ouvre la fille (`#ouvrir-fille`, fenêtre
-  séparée) ; chacune publie son état de focus et espionne `window.focus()` (`#nb-appels` compte les appels).
-- **`imbrication.html`** — deux branches `#branche-x > .niveau-2 > … > .niveau-5 > .cible/.action`, plus un
-  **leurre** dans la branche B avant le vrai chemin : seule la chaîne des 5 `within` atteint « cible B ».
-- **`soft.html`** — récapitulatif de commande statique (T82), éléments rangés dans l'ordre où T82 les vérifie :
-  `#erreur` caché, `#confirmation` visible (« Commande n° 1234 validée »), `#code-promo` absent, `#annuler`
-  désactivé, `#payer` actif, `#newsletter` non cochée, `#cgv` cochée, `#livraison` (3 options) ; à côté de
-  chaque élément, son état réel et les numéros des vérifications qui le visent, avec le résultat attendu.
+
+`config/configured/` :
+
+- **`slowload.html?ms=N`** — bloque le chargement N ms (`<script>` occupé) pour `pageLoadTimeout`.
+
+`websync/<domaine>/`, une par domaine de la surface `WebSync` :
+
+- `action/` **`keyboard.html`** — `#nom` (prérempli « ancien ») → `#prenom` → `#ville` → `#envoyer` dans
+  l'ordre de tabulation ; chaque soumission écrit `nom|prenom|ville` dans `#recap` et compte dans `#nb-submit`.
+- `action/` **`javascript.html`** — fixture **unique** des actions JS : `#recouvert` sous `#voile`,
+  `#desactive` (disabled), `#champ-js` / `#zone-js` avec journal d'événements, `#non-champ` (div).
+- `action/` **`pointer.html`** — `#cible` : `#statut` = dernier événement (`dblclick`, `contextmenu
+  bouton=N`), `#nb-clics` = nombre de `click`.
+- `action/` **`window-parent.html`** / **`window-child.html`** — la mère ouvre la fille (`#ouvrir-fille`,
+  fenêtre séparée) ; chacune publie son état de focus et espionne `window.focus()` (`#nb-appels` compte les
+  appels).
+- `within/` **`nested.html`** — container `#box` contenant `#child` (2 niveaux).
+- `within/` **`nested-deep.html`** — deux branches `#branche-x > .niveau-2 > … > .niveau-5 > .cible/.action`,
+  plus un **leurre** dans la branche B avant le vrai chemin : seule la chaîne des 5 `within` atteint « cible B ».
+- `select/` **`select.html`** — `#simple` (Option A/B/C, valeurs a/b/c), `#multiple` (Rouge/Vert/Bleu/Jaune,
+  valeurs r/v/b/j, rien de sélectionné).
+- `read/` **`attributes.html`** — texte visible + masqué, `input value="initial"`, classes et couleur, ARIA,
+  `#boite` en position absolue (500,150) 150×40.
+- `read/` **`collection.html`** — `#liste` (Un/Deux/Trois), `#conteneur` (2 `.item`), `#vide`.
+- `assertion/` **`soft.html`** — récapitulatif de commande statique (T82), éléments rangés dans l'ordre où T82
+  les vérifie : `#erreur` caché, `#confirmation` visible (« Commande n° 1234 validée »), `#code-promo` absent,
+  `#annuler` désactivé, `#payer` actif, `#newsletter` non cochée, `#cgv` cochée, `#livraison` (3 options) ; à
+  côté de chaque élément, son état réel et les numéros des vérifications qui le visent, avec le résultat attendu.
+- `wait/` **`disappear.html?delay=N`** — retire un élément après N ms (waits négatifs).
+- `wait/` **`rerender.html?interval=N`** — remplace le nœud `#target` toutes les N ms (stale/re-render).
+- `diagnostic/` **`hidden.html`** — `#target` présent en `display:none`.
+- `diagnostic/` **`disabled.html`** — champ/bouton `disabled` (option : réactivé après N ms).
+- `diagnostic/` **`overlay.html`** — overlay `position:fixed` couvrant `#target` (interception).
 
 ### Sites réels (PHASE 2)
 
@@ -159,7 +167,7 @@ DOM*). Secours : `demoqa.com`, `saucedemo.com`. Chaque PageObject détient un `W
 après** le seuil, selon la règle **± 5 s** (marge réduite à **2 s** quand le timeout est trop court :
 SHORT par défaut 5 s, implicit wait 3 s). Couvrir le timeout **par défaut** du socle (aucune clé) **et**
 le timeout **configuré par clé** `qa.sync.timeout.*` — chaque clé **différente du défaut**, sinon rien ne
-prouve qu'elle est lue. Les valeurs vivent dans le `pom.xml` (groupes `defaut` / `cle`) ; les tests les
+prouve qu'elle est lue. Les valeurs vivent dans le `pom.xml` (groupes `defaults` / `configured`) ; les tests les
 **lisent** et en déduisent leurs délais. **Chronométrer** chaque cas.
 
 | # | Mécanisme | Manip (fixture) | Attendu |
@@ -183,7 +191,7 @@ prouve qu'elle est lue. Les valeurs vivent dans le `pom.xml` (groupes `defaut` /
 | T8 | `DISABLED` | `disabled.html` | `[DISABLED]` |
 | T9 | `INTERCEPTED` | `overlay.html` | `[INTERCEPTED]` |
 | T10 | `OUT_OF_BOUNDS` | `offscreen.html` | *reclassé* : inatteignable via `WebSync` (scroll-into-view) → clic abouti ; T10bis : équivalence de trace avec `Actions` (après défilement explicite) |
-| T11 | `within` container vs child absent | `nested.html` (child ou box bidon) | `cause` = bon maillon |
+| T11 | `within` container vs child absent | `nested.html` (child ou box bidon) | clic réussi si les deux existent ; sinon `[ABSENT]`, `cause` `NoSuchElementException` nommant l'élément absent (`box-bidon` / `child-bidon`) |
 | T14 | `is*`/`contains*` : absent → `false`, **instantané** | locator bidon | `false` immédiat (pas de 3 s) |
 | T15 | `waitUntil*` positifs/négatifs | `appear.html` / `disappear.html` | attentes honorées |
 | T16 | `should*` **dur** (`soft=false`) | `form.html` | échoue à la 1ʳᵉ |
@@ -195,46 +203,48 @@ prouve qu'elle est lue. Les valeurs vivent dans le `pom.xml` (groupes `defaut` /
 | T23 | 3 services actifs par présence du jar | test KO, aucun `@ExtendWith` custom | listeners actifs |
 | T24 | précédence `-D` > `serenity.conf` | override une clé | `-D` gagne |
 
-**Surface de l'API `WebSync` (fixtures dédiées `fixtures/websync/`)** — un sous-package de
+**Surface de l'API `WebSync` (fixtures `fixtures/websync/<domaine>/` et partagées)** — un sous-package de
 `org.automation.websync` par domaine du socle ; chaque test vérifie l'effet de **chaque** action :
 
 | # | Quoi | Fixture | Attendu |
 |---|---|---|---|
-| T25 | `typeAndTab` ×2 puis `typeAndEnter`, `hasFocus` | `saisie.html` | valeur remplacée, focus `#nom`→`#prenom`→`#ville`, 1 soumission `Dupont\|Jean\|Lyon` |
-| T26 | `clear` puis `submit`, `containsValue` | `saisie.html` | champ vidé, 1 soumission `Martin\|\|Paris` |
+| T25 | `typeAndTab` ×2 puis `typeAndEnter`, `hasFocus` | `keyboard.html` | valeur remplacée, focus `#nom`→`#prenom`→`#ville`, 1 soumission `Dupont\|Jean\|Lyon` |
+| T26 | `clear` puis `submit`, `containsValue` | `keyboard.html` | champ vidé, 1 soumission `Martin\|\|Paris` |
 | T27 | `clickViaJS` sur élément recouvert | `javascript.html` | préalable : clic natif `[INTERCEPTED]` ; clic JS → gestionnaire déclenché |
 | T28 | `clickViaJS` sur élément `disabled` | `javascript.html` | `SyncException` `[DISABLED]`, aucun effet |
 | T29 | `typeViaJS` sur `input` et `textarea` | `javascript.html` | valeur remplacée, événements `input` puis `change` |
 | T30 | `typeViaJS` sur un `div` | `javascript.html` | `JavascriptException` **immédiate** (non transitoire, pas d'attente du profil) |
-| T31 | `doubleClick` | `pointeur.html` | `dblclick` reçu, précédé de 2 `click` |
-| T32 | `contextClick` | `pointeur.html` | `contextmenu` bouton 2, aucun `click` |
+| T31 | `doubleClick` | `pointer.html` | `dblclick` reçu, précédé de 2 `click` |
+| T32 | `contextClick` | `pointer.html` | `contextmenu` bouton 2, aucun `click` |
 | T33 | `selectByVisibleText`, `selectByIndex`, `getFirstSelectedOptionValue` | `select.html` | option lue par valeur et libellé |
 | T34 | `getSelectOptions`, `getSelectOptionValues`, `containsSelectOption`, `shouldContainSelectedOption` | `select.html` | lectures exactes ; `should…` passe sur option existante, `AssertionError` sinon |
 | T35 | `deselectByVisibleText/Value/Index`, `deselectAll`, `getSelectedVisibleTexts`, `getSelectedValues` | `select.html` | chaque (dé)sélection reflétée |
 | T36 | `deselectByVisibleText` sur liste simple | `select.html` | `UnsupportedOperationException` **immédiate**, sélection inchangée |
-| T37 | `getText` / `getTextContent` / `getTextValue` | `attributs.html` | visible seul / texte masqué inclus / valeur ou texte selon l'élément |
-| T38 | `getDomAttribute` / `getDomProperty` / `getAttribute`, `getTagName` | `attributs.html` | attribut initial / propriété courante / valeur résolue |
-| T39 | `getCssValue`, `hasClass` | `attributs.html` | couleur normalisée (rgba Chrome, rgb Firefox) ; `hasClass` faux sans exception sur absent |
-| T40 | `getAriaLabel`, `getAriaRole`, `getAccessibleName` | `attributs.html` | valeurs ARIA exactes (Chrome et Firefox) |
-| T41 | `getLocation`, `getSize`, `getRect`, `getScreenshotAs` | `attributs.html` | géométrie exacte ; PNG aux proportions de l'élément |
+| T37 | `getText` / `getTextContent` / `getTextValue` | `attributes.html` | visible seul / texte masqué inclus / valeur ou texte selon l'élément |
+| T38 | `getDomAttribute` / `getDomProperty` / `getAttribute`, `getTagName` | `attributes.html` | attribut initial / propriété courante / valeur résolue |
+| T39 | `getCssValue`, `hasClass` | `attributes.html` | couleur normalisée (rgba Chrome, rgb Firefox) ; `hasClass` faux sans exception sur absent |
+| T40 | `getAriaLabel`, `getAriaRole`, `getAccessibleName` | `attributes.html` | valeurs ARIA exactes (Chrome et Firefox) |
+| T41 | `getLocation`, `getSize`, `getRect`, `getScreenshotAs` | `attributes.html` | géométrie exacte ; PNG aux proportions de l'élément |
 | T42 | `count`, `getTexts`, à la racine et dans `within` | `collection.html` | 3 / [Un, Deux, Trois] |
 | T43 | `count`, `getTexts`, `within(absent).count` sur absent | `collection.html` | 0 / liste vide, **immédiats** (< 1 s) — a révélé l'écart socle §5 (implicit wait 3 s), corrigé par le socle (`8736508`) |
 | T44 | `containsElements` | `collection.html` | vrai / faux sur vide / faux sans exception sur absent |
-| T45 | `isDisabled`, `isClickable`, `isCurrentlyVisible` | `etats.html` | vrai et faux selon l'état |
-| T46 | `containsOnlyText`, `containsValue` | `etats.html` | texte exact vs partiel ; valeur contenue ou non |
-| T47 | 9 prédicats sur absent (complète T14) | `etats.html` | `false`, chacun < 1 s |
-| T48–T58 | les 11 `should*` restants (un test chacun, complète T16) | `etats.html` (+ `transitions.html` pour T49) | passe sur le bon état ; `AssertionError` citant le locator au timeout SHORT, < timeout + 2 s (une horloge, C8) ; T48 `shouldBeCurrentlyVisible` : échec immédiat ; T49 : attend une disparition à 2 s |
+| T45 | `isDisabled`, `isClickable`, `isCurrentlyVisible` | `states.html` | vrai et faux selon l'état |
+| T46 | `containsOnlyText`, `containsValue` | `states.html` | texte exact vs partiel ; valeur contenue ou non |
+| T47 | 9 prédicats sur absent (complète T14) | `states.html` | `false`, chacun < 1 s |
+| T48–T58 | les 11 `should*` restants (un test chacun, complète T16) | `states.html` (+ `transitions.html` pour T49) | passe sur le bon état ; `AssertionError` citant le locator au timeout SHORT, < timeout + 2 s (une horloge, C8) ; T48 `shouldBeCurrentlyVisible` : échec immédiat ; T49 : attend une disparition à 2 s |
 | T59–T66 | `waitUntilPresent/Enabled/Clickable/Disabled` (passant / non passant) | `transitions.html` | ± 5 s autour de MEDIUM (15 s) ; T59 : présent mais pas visible |
 | T67–T70 | `waitForElement(By, Duration)`, `waitForElementToDisappear(By, Duration)` | `transitions.html` | ± 5 s autour de la durée (8 s) ; exception avant le profil MEDIUM → la durée passée prime |
-| T71–T74 | structure de la `SyncException` | `etats.html` | `cause` = exception Selenium typée ; un `suppressed` par code ; T74 : `[HIDDEN]` puis `[DISABLED]`, cause = garde d'activation |
-| T75 | `setWindowFocus` en alternance mère/fille/mère/fille | `fenetre-mere.html` + `fenetre-fille.html` | chaque fenêtre reçoit **ses** appels à `window.focus()` et aucun de l'autre. Le gain de focus lui-même n'est pas vérifié : `switchTo().window()` le donne déjà, et le navigateur filtre `window.focus()` (sonde du 2026-10-18) |
-| T76 | `setWindowFocus` sur absent | `fenetre-mere.html` | `SyncException [ABSENT]`, aucun appel — a révélé l'écart socle §6 (faux succès), corrigé par le socle (`1dda2d7`) |
-| T77 | `QaPageObject.web(SyncTimeout)` (groupe `defaut`) | `etats.html` | vue distincte expirant à SHORT ; `web` expire ensuite à MEDIUM |
+| T71–T74 | structure de la `SyncException` | `states.html` | `cause` = exception Selenium typée ; un `suppressed` par code ; T74 : `[HIDDEN]` puis `[DISABLED]`, cause = garde d'activation |
+| T75 | `setWindowFocus` en alternance mère/fille/mère/fille | `window-parent.html` + `window-child.html` | chaque fenêtre reçoit **ses** appels à `window.focus()` et aucun de l'autre. Le gain de focus lui-même n'est pas vérifié : `switchTo().window()` le donne déjà, et le navigateur filtre `window.focus()` (sonde du 2026-10-18) |
+| T76 | `setWindowFocus` sur absent | `window-parent.html` | `SyncException [ABSENT]`, aucun appel — a révélé l'écart socle §6 (faux succès), corrigé par le socle (`1dda2d7`) |
+| T77 | `QaPageObject.web(SyncTimeout)` (groupe `defaults`) | `states.html` | vue distincte expirant à SHORT ; `web` expire ensuite à MEDIUM |
 | T78 | clé `qa.sync.pollingInterval` (groupe `polling`, 2000 ms) | `transitions.html` | cible à 1,5 intervalle → clic au 3e sondage (≥ 2 intervalles) |
-| T79 | `within` ×5, lecture | `imbrication.html` | « cible B » au 5e niveau ; racine = 3 cibles ; chaîne courte = leurre |
-| T80 | `within` ×5, action | `imbrication.html` | le clic atteint le bouton B (ni A, ni le leurre) |
-| T81 | `within` ×5 avec un maillon absent | `imbrication.html` | `SyncException [ABSENT]`, cause désignant le maillon manquant |
+| T79 | `within` ×5, lecture | `nested-deep.html` | « cible B » au 5e niveau ; racine = 3 cibles ; chaîne courte = leurre |
+| T80 | `within` ×5, action | `nested-deep.html` | le clic atteint le bouton B (ni A, ni le leurre) |
+| T81 | `within` ×5 avec un maillon absent | `nested-deep.html` | `SyncException [ABSENT]`, cause désignant le maillon manquant |
 | T82 | soft-assert (groupe `soft`, SHORT 1 s), **rouge à dessein, `@Disabled`**, lancé à la main (README « Lancer les tests » §6) : 16 `should*` (13 KO, 3 OK, le dernier OK), joués en bloc hors étape puis en étapes | `soft.html` | **bloc** : vote de fin = un seul agrégat de 13 échecs dans l'ordre, collecteur purgé (vérifié dans le code, capturé par `try/catch` et non `assertThrows`) ; **étapes** : 13 rouges et 3 vertes, aucune sautée, un `{step}.html` par échec ; **fin** : test FAILED |
+| T83 | `pageLoadTimeout` sous throttle **2G réel** (groupe `configured`, Chrome seulement : CDP) | site réel `/login` | `TimeoutException` à ~10 s (navigation bornée par la clé) ; « Aborted » sur Firefox |
+| T84 | surface formulaire : `type`, `selectByValue`, `click` (case), `submit`, puis `getValue` / `getFirstSelectedOptionVisibleText` / `isSelected` / `containsText` | `form.html` | chaque action reflétée par sa lecture |
 
 ## 4. Tests — PHASE 2 (sites réels)
 
@@ -247,6 +257,10 @@ Navigation réaliste + couverture de la **surface d'interaction** sur widgets r�
 | S3 | `fluentWait` / `waitUntil*` en conditions réelles | *the-internet* : Dynamic Loading, Dynamic Controls | attentes honorées |
 | S4 | password réel + masquage à l'échec | *the-internet* : Login (`/login`) | saisie OK, `value` blanchie si KO |
 | S5 | reprise des PageObjects existants (non-régression) | site déjà en place | tout reste vert |
+
+Tests en place (`org.automation.site`) : **S3** = `DynamicWaitTest` (`S3_short`, `S3_medium` : profil
+`SyncTimeout` passé par le PageObject), **S4** = `LoginTest#S4_login_failure_captured` (`@Disabled`, capture KO
+et masquage), **S5** = `LoginTest#S5_login_valid`. S1 et S2 restent à écrire.
 
 ## 5. Méthode & phasage
 
